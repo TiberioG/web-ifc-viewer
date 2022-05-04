@@ -1,4 +1,5 @@
 import { LineSegments, EdgesGeometry, Material, Mesh } from 'three';
+import { Subset } from 'web-ifc-three/IFC/components/subsets/SubsetManager';
 import { IfcContext } from '../context';
 import { disposeMeshRecursively } from '../../utils/ThreeUtils';
 
@@ -50,6 +51,16 @@ export class Edges {
     if (!model) return;
     this.createFromMesh(name, model, lineMaterial, material);
   }
+
+  createFromSubset(
+    name: string,
+    subset: Subset,
+    lineMaterial: Material,
+    material?: Material
+  ) {
+    this.createFromMesh(name, subset, lineMaterial, material);
+  }
+
   createFromMesh(name: string, mesh: Mesh, lineMaterial: Material, material?: Material) {
     const planes = this.context.getClippingPlanes();
     lineMaterial.clippingPlanes = planes;

@@ -7,7 +7,6 @@ import {
   IfcAxes,
   IfcClipper,
   DropboxAPI,
-  Edges,
   SectionFillManager,
   IfcDimensions,
   PlanManager
@@ -27,7 +26,6 @@ export class IfcViewerAPI {
   plans: PlanManager;
   filler: SectionFillManager;
   dimensions: IfcDimensions;
-  edges: Edges;
   shadowDropper: ShadowDropper;
   dxf: DXFWriter;
   pdf: PDFWriter;
@@ -46,7 +44,6 @@ export class IfcViewerAPI {
     this.plans = new PlanManager(this.IFC, this.context, this.clipper);
     this.filler = new SectionFillManager(this.IFC, this.context);
     this.dimensions = new IfcDimensions(this.context);
-    this.edges = new Edges(this.context);
     this.shadowDropper = new ShadowDropper(this.context, this.IFC);
     this.edgesVectorizer = new EdgesVectorizer(this.context, this.clipper, this.grid, this.axes);
     this.dxf = new DXFWriter();
@@ -237,8 +234,6 @@ export class IfcViewerAPI {
     (this.filler as any) = null;
     this.dimensions.dispose();
     (this.dimensions as any) = null;
-    this.edges.dispose();
-    (this.edges as any) = null;
     this.shadowDropper.dispose();
     (this.shadowDropper as any) = null;
     this.dxf.dispose();

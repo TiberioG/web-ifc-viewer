@@ -1,5 +1,6 @@
-import { Mesh, Vector3 } from 'three';
+import { LineBasicMaterial, Mesh, MeshBasicMaterial, Vector3 } from 'three';
 import { IFCBUILDINGSTOREY, IFCBUILDING } from 'web-ifc';
+import { Subset } from 'web-ifc-three/IFC/components/subsets/SubsetManager';
 import { IfcPlane } from '../clipping-planes/planes';
 import { IfcClipper } from '../clipping-planes/clipper';
 import { CameraProjections, NavigationModes } from '../../../base-types';
@@ -7,6 +8,7 @@ import { IfcManager } from '../../ifc';
 import { UnitType } from '../../ifc/units';
 import { IfcContext } from '../../context';
 import { disposeMeshRecursively } from '../../../utils/ThreeUtils';
+import { Edges } from '../edges';
 
 export interface PlanViewConfig {
   modelID: number;
@@ -23,8 +25,13 @@ export interface PlanView extends PlanViewConfig {
 }
 
 export class PlanManager {
-  planLists: { [modelID: number]: { [name: string]: PlanView } } = {};
+  planLists: { [modelID: number]: { [planId: number]: PlanView } } = {};
+
   sectionFill: Mesh;
+  edges: Edges;
+
+  storeySubsets: { [floorId: number]: Subset };
+
 
   active = false;
   currentPlan?: PlanView;
@@ -40,6 +47,9 @@ export class PlanManager {
 
   constructor(private ifc: IfcManager, private context: IfcContext, private clipper: IfcClipper) {
     this.sectionFill = new Mesh();
+    this.edges = new Edges(context);
+    this.storeySubsets = [];
+
   }
 
   dispose() {
@@ -47,11 +57,13 @@ export class PlanManager {
     (this.sectionFill as any) = null;
     (this.storeys as any) = null;
     (this.planLists as any) = null;
+    this.edges.dispose();
+    (this.edges as any) = null;
   }
 
   getAll(modelID: number) {
     const currentPlans = this.planLists[modelID];
-    if (!currentPlans) throw new Error("The requested model doesn't have floor plans generated");
+    if (!currentPlans) throw new Error('The requested model doesn\'t have floor plans generated');
     return Object.keys(currentPlans);
   }
 
@@ -63,16 +75,26 @@ export class PlanManager {
     const currentPlanlist = this.planLists[modelID];
     const expressID = config.expressID;
 
-    if (currentPlanlist[name]) return;
-    currentPlanlist[name] = { modelID, name, ortho, expressID };
-    await this.createClippingPlane(config, currentPlanlist[name]);
+    if (currentPlanlist[expressID]) return;
+    currentPlanlist[expressID] = { modelID, name, ortho, expressID };
+    await this.createClippingPlane(config, currentPlanlist[expressID]);
   }
 
-  async goTo(modelID: number, name: string, animate = false) {
-    if (this.currentPlan?.modelID === modelID && this.currentPlan.name === name) return;
+  async goTo(modelID: number, planId: number, animate = false, hideColors = true) {
+    if (this.currentPlan?.modelID === modelID && this.currentPlan.expressID === planId) return;
+    console.log(this.ifc);
+
+    Object.entries(this.storeySubsets).forEach(([id, subset]) => {
+      subset.visible = false;
+      // eslint-disable-next-line eqeqeq
+      if (id != planId.toString()) {
+        subset.visible = false;
+      }
+    });
+    this.edges.toggle(`edges${planId}`, true);
     this.storeCameraPosition();
     this.hidePreviousClippingPlane();
-    this.getCurrentPlan(modelID, name);
+    this.getCurrentPlan(modelID, planId);
     this.activateCurrentPlan();
     if (!this.active) {
       await this.moveCameraTo2DPlanPosition(animate);
@@ -103,6 +125,7 @@ export class PlanManager {
     );
   }
 
+
   async computeAllPlanViews(modelID: number) {
     await this.getCurrentStoreys(modelID);
 
@@ -111,11 +134,32 @@ export class PlanManager {
     const transformHeight = await this.getTransformHeight(modelID);
     const storeys = this.storeys[modelID];
 
+
     for (let i = 0; i < storeys.length; i++) {
       if (storeys[i]) {
         const baseHeight = storeys[i].Elevation.value;
         const elevation = (baseHeight + siteCoords[2]) * unitsScale + transformHeight;
         const expressID = storeys[i].expressID;
+        const manager = this.ifc.loader.ifcManager;
+        const floorSubset = manager.createSubset({
+          modelID,
+          ids: [expressID],
+          applyBVH: true,
+          scene: this.context.getScene(),
+          removePrevious: true,
+          customID: `storey-${i}`
+        });
+
+        this.storeySubsets = Object.assign(this.storeySubsets, { expressID: floorSubset });
+
+        const lineMaterial = new LineBasicMaterial({ color: 0x000000 });
+        const meshMaterial = new MeshBasicMaterial();
+        await this.edges.createFromSubset(
+          `edges${expressID}`,
+          floorSubset,
+          lineMaterial,
+          meshMaterial
+        );
 
         // eslint-disable-next-line no-await-in-loop
         await this.create({
@@ -199,12 +243,14 @@ export class PlanManager {
     this.previousProjection = this.context.ifcCamera.projection;
   }
 
-  private getCurrentPlan(modelID: number, name: string) {
-    if (this.planLists[modelID] === undefined) throw new Error('The specified plan is undefined!');
+  private getCurrentPlan(modelID: number, planId: number) {
+    if (!this.planLists || !(modelID in this.planLists))
+      throw new Error('No planlist for the requested modelID ');
     const currentPlanList = this.planLists[modelID];
-    if (currentPlanList[name] === undefined) throw new Error('The specified plan is undefined!');
-    if (!currentPlanList[name]) throw new Error('The specified plan name does not exist!');
-    this.currentPlan = currentPlanList[name];
+    console.log(this.planLists);
+    if (!(planId in currentPlanList)) throw new Error('The specified plan is undefined!');
+    if (!currentPlanList[planId]) throw new Error('The specified plan name does not exist!');
+    this.currentPlan = currentPlanList[planId];
   }
 
   private hidePreviousClippingPlane() {

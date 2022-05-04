@@ -84,7 +84,7 @@ const loadIfc = async (event) => {
   }
 
   // await createFill(model.modelID);
-  viewer.edges.create(`${model.modelID}`, model.modelID, lineMaterial, baseMaterial);
+  // viewer.edges.create(`${model.modelID}`, model.modelID, lineMaterial, baseMaterial);
 
   await viewer.shadowDropper.renderShadow(model.modelID);
 
@@ -165,7 +165,7 @@ function createList(array) {
 }
 
 
-let planNames = [];
+let planIds = [];
 const mode2dButton = createSideMenuButton('./resources/2d-icon.png');
 mode2dButton.addEventListener('click', async () => {
   dropBoxButton.blur();
@@ -174,15 +174,15 @@ mode2dButton.addEventListener('click', async () => {
   const edgesName = 'exampleEdges';
   const lineMaterial = new LineBasicMaterial({ color: 0x000000 });
   const meshMaterial = new MeshBasicMaterial();
-  await viewer.edges.create(edgesName, 0, lineMaterial, meshMaterial);
-  viewer.edges.toggle(edgesName, true);
+  // await viewer.edges.create(edgesName, 0, lineMaterial, meshMaterial);
+  // viewer.edges.toggle(edgesName, true);
 
   viewer.shadowDropper.shadows[0].root.visible = false;
 
   const currentPlans = viewer.plans.planLists[0];
-  planNames = Object.keys(currentPlans);
-  createList(planNames);
-  await viewer.plans.goTo(0, planNames[0], true);
+  planIds = Object.keys(currentPlans);
+  createList(planIds);
+  await viewer.plans.goTo(0, planIds[0], true);
 
 });
 
