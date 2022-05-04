@@ -9,6 +9,7 @@ import { UnitType } from '../../ifc/units';
 import { IfcContext } from '../../context';
 import { disposeMeshRecursively } from '../../../utils/ThreeUtils';
 import { Edges } from '../edges';
+import { IFCModel } from 'web-ifc-three/IFC/components/IFCModel';
 
 export interface PlanViewConfig {
   modelID: number;
@@ -82,10 +83,13 @@ export class PlanManager {
 
   async goTo(modelID: number, planId: number, animate = false, hideColors = true) {
     if (this.currentPlan?.modelID === modelID && this.currentPlan.expressID === planId) return;
-    console.log(this.ifc);
 
+    const manager = this.ifc.loader.ifcManager;
+    console.log(manager);
     Object.entries(this.storeySubsets).forEach(([id, subset]) => {
-      subset.visible = false;
+      const mysubset = manager.getSubset(modelID, undefined, `storey-${planId}`);
+      console.log(mysubset);
+      if (hideColors) mysubset.removeFromParent();
       // eslint-disable-next-line eqeqeq
       if (id != planId.toString()) {
         subset.visible = false;
@@ -147,7 +151,7 @@ export class PlanManager {
           applyBVH: true,
           scene: this.context.getScene(),
           removePrevious: true,
-          customID: `storey-${i}`
+          customID: `storey-${expressID}`
         });
 
         this.storeySubsets = Object.assign(this.storeySubsets, { expressID: floorSubset });
@@ -173,6 +177,18 @@ export class PlanManager {
         });
       }
     }
+
+    // const items = this.context.items;
+    // items.pickableIfcModels = items.pickableIfcModels.filter((model: any) => model !== model);
+    // items.ifcModels = items.ifcModels.filter((model: any) => model !== model);
+    // // this.context.removeFromParent();
+
+    // Object.keys(this.ifc.loader.ifcManager.subsets).forEach((key) => {
+    //   if (key.includes('storey'))
+    //     { // @ts-ignore
+    //       this.context.scene.addModel(this.ifc.loader.ifcManager.subsets[key].mesh as IFCModel);
+    //     }
+    // });
   }
 
   private storeCameraPosition() {

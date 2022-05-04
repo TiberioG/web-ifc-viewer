@@ -90690,9 +90690,13 @@
             var _a;
             if (((_a = this.currentPlan) === null || _a === void 0 ? void 0 : _a.modelID) === modelID && this.currentPlan.expressID === planId)
                 return;
-            console.log(this.ifc);
+            const manager = this.ifc.loader.ifcManager;
+            console.log(manager);
             Object.entries(this.storeySubsets).forEach(([id, subset]) => {
-                subset.visible = false;
+                const mysubset = manager.getSubset(modelID, undefined, `storey-${planId}`);
+                console.log(mysubset);
+                if (hideColors)
+                    mysubset.removeFromParent();
                 // eslint-disable-next-line eqeqeq
                 if (id != planId.toString()) {
                     subset.visible = false;
@@ -90739,7 +90743,7 @@
                         applyBVH: true,
                         scene: this.context.getScene(),
                         removePrevious: true,
-                        customID: `storey-${i}`
+                        customID: `storey-${expressID}`
                     });
                     this.storeySubsets = Object.assign(this.storeySubsets, { expressID: floorSubset });
                     const lineMaterial = new LineBasicMaterial({ color: 0x000000 });
@@ -90757,6 +90761,16 @@
                     });
                 }
             }
+            // const items = this.context.items;
+            // items.pickableIfcModels = items.pickableIfcModels.filter((model: any) => model !== model);
+            // items.ifcModels = items.ifcModels.filter((model: any) => model !== model);
+            // // this.context.removeFromParent();
+            // Object.keys(this.ifc.loader.ifcManager.subsets).forEach((key) => {
+            //   if (key.includes('storey'))
+            //     { // @ts-ignore
+            //       this.context.scene.addModel(this.ifc.loader.ifcManager.subsets[key].mesh as IFCModel);
+            //     }
+            // });
         }
         storeCameraPosition() {
             if (this.active) {
