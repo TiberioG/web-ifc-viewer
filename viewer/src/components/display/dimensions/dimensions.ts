@@ -5,7 +5,8 @@ import {
   Intersection,
   LineDashedMaterial,
   Mesh,
-  MeshBasicMaterial, Object3D,
+  MeshBasicMaterial,
+  Object3D,
   Vector3
 } from 'three';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
@@ -49,6 +50,7 @@ export class IfcDimensions extends IfcComponent {
   // Temp variables
   private startPoint = new Vector3();
   private endPoint = new Vector3();
+  public plane: undefined | Object3D;
 
   constructor(context: IfcContext) {
     super(context);
@@ -58,6 +60,7 @@ export class IfcDimensions extends IfcComponent {
     htmlPreview.className = this.previewClassName;
     this.previewElement = new CSS2DObject(htmlPreview);
     this.previewElement.visible = false;
+    this.plane = undefined;
   }
 
   dispose() {
@@ -75,16 +78,30 @@ export class IfcDimensions extends IfcComponent {
 
   update(_delta: number) {
     if (this.enabled && this.preview) {
-      const intersects = this.context.castRayIfc();
-      this.previewElement.visible = !!intersects;
-      if (!intersects) return;
-      this.previewElement.visible = true;
-      const closest = this.getClosestVertex(intersects);
-      this.previewElement.visible = !!closest;
-      if (!closest) return;
-      this.previewElement.position.set(closest.x, closest.y, closest.z);
-      if (this.dragging) {
-        this.drawInProcess();
+      if (this.plane) {
+        const intersects = this.context.castRay([this.plane]);
+        this.previewElement.visible = !!intersects;
+        if (!intersects || intersects.length < 1) return;
+        this.previewElement.visible = true;
+        const closest = intersects[0].point;
+        this.previewElement.visible = !!closest;
+        if (!closest) return;
+        this.previewElement.position.set(closest.x, closest.y, closest.z);
+        if (this.dragging) {
+          this.drawInProcess();
+        }
+      } else {
+        const intersects = this.context.castRayIfc();
+        this.previewElement.visible = !!intersects;
+        if (!intersects) return;
+        this.previewElement.visible = true;
+        const closest = this.getClosestVertex(intersects);
+        this.previewElement.visible = !!closest;
+        if (!closest) return;
+        this.previewElement.position.set(closest.x, closest.y, closest.z);
+        if (this.dragging) {
+          this.drawInProcess();
+        }
       }
     }
   }
@@ -161,11 +178,16 @@ export class IfcDimensions extends IfcComponent {
     this.drawEnd();
   }
 
-  createInPlane(plane: Object3D) {
+  createInPlane(plane?: Object3D) {
     if (!this.enabled) return;
     if (!this.dragging) {
-      this.drawStartInPlane(plane);
-      return;
+      if (plane) {
+        this.plane = plane;
+      }
+      if (this.plane) {
+        this.drawStartInPlane(this.plane);
+        return;
+      }
     }
     this.drawEnd();
   }
@@ -196,23 +218,20 @@ export class IfcDimensions extends IfcComponent {
     this.currentDimension = undefined;
   }
 
-  private drawStart() {
-    this.dragging = true;
+  drawStart() {
     const intersects = this.context.castRayIfc();
     if (!intersects) return;
     const found = this.getClosestVertex(intersects);
     if (!found) return;
     this.startPoint = found;
+    this.dragging = true;
   }
 
-  private drawStartInPlane(plane: Object3D) {
-    this.dragging = true;
-
+  drawStartInPlane(plane: Object3D) {
     const intersects = this.context.castRay([plane]);
     if (!intersects || intersects.length < 1) return;
     this.startPoint = intersects[0].point;
-
-
+    this.dragging = true;
   }
 
   private drawInProcess() {

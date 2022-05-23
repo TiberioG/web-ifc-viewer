@@ -1,12 +1,13 @@
 import { Mesh, Vector3 } from 'three';
 import { IFCBUILDINGSTOREY, IFCBUILDING } from 'web-ifc';
-import { IfcPlane } from '../clipping-planes/planes';
+
 import { IfcClipper } from '../clipping-planes/clipper';
 import { CameraProjections, NavigationModes } from '../../../base-types';
 import { IfcManager } from '../../ifc';
 import { UnitType } from '../../ifc/units';
 import { IfcContext } from '../../context';
 import { disposeMeshRecursively } from '../../../utils/ThreeUtils';
+import { PlanView } from './planview';
 
 export interface PlanViewConfig {
   modelID: number;
@@ -16,10 +17,6 @@ export interface PlanViewConfig {
   point?: Vector3;
   ortho?: boolean;
   rotation?: number;
-}
-
-export interface PlanView extends PlanViewConfig {
-  plane?: IfcPlane;
 }
 
 export class PlanManager {
@@ -59,13 +56,18 @@ export class PlanManager {
     const { modelID, name } = config;
 
     const ortho = config.ortho || true;
-    if (this.planLists[modelID] === undefined) this.planLists[modelID] = {};
+    if (this.planLists[modelID] === undefined) {
+      this.planLists[modelID] = {};
+    }
     const currentPlanlist = this.planLists[modelID];
     const expressID = config.expressID;
 
     if (currentPlanlist[name]) return;
-    currentPlanlist[name] = { modelID, name, ortho, expressID };
-    await this.createClippingPlane(config, currentPlanlist[name]);
+    currentPlanlist[name] = new PlanView(modelID, expressID, name, ortho, this.context);
+
+    const clippingPlane = await this.createClippingPlane(config, currentPlanlist[name]);
+    if (!clippingPlane) return;
+    currentPlanlist[name].addPlane(clippingPlane);
   }
 
   async goTo(modelID: number, name: string, animate = false) {
@@ -148,7 +150,9 @@ export class PlanManager {
       plan.plane = plane;
       await plane.edges.updateEdges();
       plane.edges.visible = false;
+      return plane;
     }
+    return undefined;
   }
 
   private async getTransformHeight(modelID: number) {
@@ -187,6 +191,11 @@ export class PlanManager {
   private activateCurrentPlan() {
     if (!this.currentPlan) throw new Error('Current plan is not defined.');
     if (this.currentPlan.plane) this.currentPlan.plane.active = true;
+    const drawings = this.currentPlan?.drawings;
+    if (drawings) {
+      drawings.active = true;
+    }
+    console.log(drawings);
     this.context.ifcCamera.setNavigationMode(NavigationModes.Plan);
     this.context.ifcCamera.projection = this.currentPlan.ortho
       ? CameraProjections.Orthographic
@@ -210,6 +219,9 @@ export class PlanManager {
   private hidePreviousClippingPlane() {
     const plane = this.currentPlan?.plane;
     if (plane) plane.active = false;
+
+    const drawings = this.currentPlan?.drawings;
+    if (drawings) drawings.active = false;
   }
 
   private getFloorplanName(floorplan: any) {
