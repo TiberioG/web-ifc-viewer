@@ -1,135 +1,273 @@
-import { Camera, Scene, WebGLRenderer } from 'three';
-import { IfcEvent } from '../ifcEvent';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+import {
+  DepthTexture,
+  Object3D,
+  PerspectiveCamera,
+  Scene,
+  Vector2,
+  WebGLRenderer,
+  WebGLRenderTarget
+} from 'three';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
+import { SAOPass } from 'three/examples/jsm/postprocessing/SAOPass';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
 import { IfcContext } from '../context';
+import { CustomOutlinePass } from './custom-outline-pass';
 
-export class IfcPostproduction {
-  ssaoEffect: any;
-  renderer: WebGLRenderer;
+// source: https://discourse.threejs.org/t/how-to-render-full-outlines-as-a-post-process-tutorial/22674
 
-  composer: any;
-  initialized = false;
+export class Postproduction {
+  htmlOverlay = document.createElement('img');
+  excludedItems = new Set<Object3D>();
 
-  private BlendFunction: any;
-  private EffectComposer: any;
-  private EffectPass: any;
-  private NormalPass: any;
-  private RenderPass: any;
-  private SSAOEffect: any;
+  private initialized = false;
 
-  private notInitializedError = 'You have not initialized the postproduction library';
+  private saoPass?: SAOPass;
+  private customOutline?: CustomOutlinePass;
+  private outlineUniforms: any;
+  private depthTexture?: DepthTexture;
+  private readonly composer: EffectComposer;
+  private readonly renderTarget: WebGLRenderTarget;
+  private readonly visibilityField = 'ifcjsPostproductionVisible';
 
-  constructor(private context: IfcContext, canvas: HTMLElement) {
-    this.renderer = new WebGLRenderer({
-      canvas,
-      powerPreference: 'high-performance',
-      antialias: false,
-      stencil: false,
-      depth: false
-    });
+  private isUserControllingCamera = false;
+  private isControlSleeping = true;
+  private lastWheelUsed = 0;
 
-    this.renderer.localClippingEnabled = true;
+  private isActive = false;
+  private isVisible = false;
+
+  private outlineParams = {
+    mode: { Mode: 0 },
+    FXAA: true,
+    outlineColor: 0x777777,
+    depthBias: 16,
+    depthMult: 83,
+    normalBias: 5,
+    normalMult: 1.0
+  };
+
+  get active() {
+    return this.isActive;
+  }
+
+  set active(active: boolean) {
+    if (this.isActive === active) return;
+    if (!this.initialized) this.tryToInitialize();
+    this.visible = active;
+    this.isActive = active;
+  }
+
+  get visible() {
+    return this.isVisible;
+  }
+
+  set visible(visible: boolean) {
+    if (!this.isActive) return;
+    this.isVisible = visible;
+    if (visible) this.update();
+    this.htmlOverlay.style.visibility = visible ? 'visible' : 'collapse';
+  }
+
+  get outlineColor() {
+    return this.outlineParams.outlineColor;
+  }
+
+  set outlineColor(color: number) {
+    this.outlineParams.outlineColor = color;
+    this.outlineUniforms.outlineColor.value.set(color);
+  }
+
+  get sao() {
+    return this.saoPass?.params;
+  }
+
+  constructor(private context: IfcContext, private renderer: WebGLRenderer) {
+    this.renderTarget = this.newRenderTarget();
+
+    this.composer = new EffectComposer(renderer, this.renderTarget);
+    this.composer.setSize(window.innerWidth, window.innerHeight);
   }
 
   dispose() {
-    this.renderer.dispose();
-    if (this.initialized) {
-      (this.renderer as any) = null;
-      (this.BlendFunction as any) = null;
-      (this.EffectComposer as any) = null;
-      (this.EffectPass as any) = null;
-      (this.NormalPass as any) = null;
-      (this.RenderPass as any) = null;
-      (this.SSAOEffect as any) = null;
-      (this.composer as any) = null;
-    }
-  }
+    this.active = false;
 
-  get domElement() {
-    return this.renderer.domElement;
-  }
+    this.renderTarget.dispose();
+    (this.renderTarget as any) = null;
 
-  // Depending on this library has given some issues in the past
-  // It's better to avoid that dependency and allow users that want to use it to give us this objects instead
-  initializePostprocessing(postproduction: {
-    BlendFunction: any;
-    EffectComposer: any;
-    EffectPass: any;
-    NormalPass: any;
-    RenderPass: any;
-    SSAOEffect: any;
-  }) {
-    this.BlendFunction = postproduction.BlendFunction;
-    this.EffectComposer = postproduction.EffectComposer;
-    this.EffectPass = postproduction.EffectPass;
-    this.NormalPass = postproduction.NormalPass;
-    this.RenderPass = postproduction.RenderPass;
-    this.SSAOEffect = postproduction.SSAOEffect;
-    this.composer = new this.EffectComposer(this.renderer);
-    this.setupEvents();
-    this.initialized = true;
-  }
+    this.depthTexture?.dispose();
+    (this.depthTexture as any) = null;
 
-  render() {
-    if (!this.initialized) throw new Error(this.notInitializedError);
-    this.composer.render();
+    this.customOutline?.dispose();
+    (this.customOutline as any) = null;
+
+    (this.composer as any) = null;
+
+    this.excludedItems.clear();
+    (this.excludedItems as any) = null;
+
+    (this.composer as any) = null;
+
+    this.htmlOverlay.remove();
+    (this.htmlOverlay as any) = null;
+
+    (this.outlineParams as any) = null;
+
+    (this.context as any) = null;
+    (this.renderer as any) = null;
+
+    (this.saoPass as any) = null;
+    (this.outlineUniforms as any) = null;
   }
 
   setSize(width: number, height: number) {
-    if (!this.initialized) return;
     this.composer.setSize(width, height);
   }
 
+  update() {
+    if (!this.initialized || !this.isActive) return;
+
+    this.hideExcludedItems();
+    this.composer.render();
+    this.htmlOverlay.src = this.renderer.domElement.toDataURL();
+    this.showExcludedItems();
+  }
+
+  private hideExcludedItems() {
+    for (const object of this.excludedItems) {
+      object.userData[this.visibilityField] = object.visible;
+      object.visible = false;
+    }
+  }
+
+  private showExcludedItems() {
+    for (const object of this.excludedItems) {
+      if (object.userData[this.visibilityField] !== undefined) {
+        object.visible = object.userData[this.visibilityField];
+      }
+    }
+  }
+
+  private tryToInitialize() {
+    const scene = this.context.getScene();
+    const camera = this.context.getCamera() as PerspectiveCamera;
+    if (!scene || !camera) return;
+
+    this.renderer.clippingPlanes = this.context.getClippingPlanes();
+    this.setupEvents();
+
+    this.addBasePass(scene, camera);
+    this.addSaoPass(scene, camera);
+    this.addOutlinePass(scene, camera);
+    this.addAntialiasPass();
+    this.setupHtmlOverlay();
+
+    this.initialized = true;
+  }
+
   private setupEvents() {
-    const createPasses = (scene: Scene, camera: Camera) => {
-      const normalPass = new this.NormalPass(scene, camera, {
-        resolutionScale: 1.0
-      });
+    const controls = this.context.ifcCamera.cameraControls;
+    const domElement = this.context.getDomElement();
+    controls.addEventListener('control', this.onControl);
+    controls.addEventListener('controlstart', this.onControlStart);
+    controls.addEventListener('wake', this.onWake);
+    controls.addEventListener('controlend', this.onControlEnd);
+    domElement.addEventListener('wheel', this.onWheel);
+    controls.addEventListener('sleep', this.onSleep);
+  }
 
-      this.ssaoEffect = new this.SSAOEffect(camera, normalPass.renderTarget.texture, {
-        blendFunction: this.BlendFunction.MULTIPLY,
-        // blendFunction: POSTPROCESSING.BlendFunction.ALPHA,
-        samples: 32,
-        rings: 5,
-        distanceThreshold: 0.0,
-        distanceFalloff: 1.0,
-        rangeThreshold: 0.0,
-        rangeFalloff: 1.0,
-        luminanceInfluence: 0.0,
-        scale: 0.6,
-        radius: 0.03,
-        bias: 0.03,
-        intensity: 10.0
-      });
+  private onControlStart = () => (this.isUserControllingCamera = true);
+  private onWake = () => (this.isControlSleeping = false);
 
-      this.ssaoEffect.ssaoMaterial.uniforms.fade.value = 1;
-      this.ssaoEffect.resolution.scale = 1.5;
-      this.ssaoEffect.blendMode.opacity.value = 1.2;
+  private onControl = () => {
+    this.visible = false;
+  };
 
-      // Scale, Bias and Opacity influence intensity.
-      this.ssaoEffect.blendMode.opacity.value = 1.0;
+  private onControlEnd = () => {
+    this.isUserControllingCamera = false;
+    if (!this.isUserControllingCamera && this.isControlSleeping) {
+      this.visible = true;
+    }
+  };
 
-      const renderPass = new this.RenderPass(scene, camera);
-      const effectPass = new this.EffectPass(camera, this.ssaoEffect);
-      effectPass.renderToScreen = true;
+  private onWheel = () => {
+    this.lastWheelUsed = performance.now();
+  };
 
-      return [renderPass, normalPass, effectPass];
-    };
+  private onSleep = () => {
+    // This prevents that this gets triggered a million times when zooming with the wheel
+    this.isControlSleeping = true;
+    const currentWheel = performance.now();
+    setTimeout(() => {
+      if (this.lastWheelUsed > currentWheel) return;
+      if (!this.isUserControllingCamera && this.isControlSleeping) {
+        this.visible = true;
+      }
+    }, 200);
+  };
 
-    const setupPasses = (scene: Scene, camera: Camera) => {
-      const passes = createPasses(scene, camera);
-      passes.forEach((pass) => this.composer.addPass(pass));
-    };
+  private setupHtmlOverlay() {
+    this.context.getContainerElement().appendChild(this.htmlOverlay);
+    // @ts-ignore
+    this.htmlOverlay.style.mixBlendMode = 'darken';
+    this.htmlOverlay.style.position = 'absolute';
+    this.htmlOverlay.style.width = '100%';
+    this.htmlOverlay.style.height = '100%';
+    this.htmlOverlay.style.userSelect = 'none';
+    this.htmlOverlay.style.pointerEvents = 'none';
+    this.htmlOverlay.style.top = '0';
+    this.htmlOverlay.style.left = '0';
+  }
 
-    this.context.events.subscribe(IfcEvent.onCameraReady, () => {
-      const scene = this.context.getScene();
-      const camera = this.context.ifcCamera;
+  private addAntialiasPass() {
+    const effectFXAA = new ShaderPass(FXAAShader);
+    effectFXAA.uniforms.resolution.value.set(1 / window.innerWidth, 1 / window.innerHeight);
+    this.composer.addPass(effectFXAA);
+  }
 
-      camera.onChangeProjection.on((camera) => {
-        this.composer.removeAllPasses();
-        setupPasses(this.context.getScene(), camera);
-      });
+  private addOutlinePass(scene: Scene, camera: PerspectiveCamera) {
+    this.customOutline = new CustomOutlinePass(
+      new Vector2(window.innerWidth, window.innerHeight),
+      scene,
+      camera
+    );
 
-      setupPasses(scene, camera.activeCamera);
+    // Initial values
+    // @ts-ignore
+    this.outlineUniforms = this.customOutline.fsQuad.material.uniforms;
+    this.outlineUniforms.outlineColor.value.set(this.outlineParams.outlineColor);
+    this.outlineUniforms.multiplierParameters.value.x = this.outlineParams.depthBias;
+    this.outlineUniforms.multiplierParameters.value.y = this.outlineParams.depthMult;
+    this.outlineUniforms.multiplierParameters.value.z = this.outlineParams.normalBias;
+    this.outlineUniforms.multiplierParameters.value.w = this.outlineParams.normalMult;
+
+    this.composer.addPass(this.customOutline);
+  }
+
+  private addSaoPass(scene: Scene, camera: PerspectiveCamera) {
+    this.saoPass = new SAOPass(scene, camera, false, true);
+    this.composer.addPass(this.saoPass);
+
+    this.saoPass.enabled = true;
+    this.saoPass.params.saoIntensity = 0.01;
+    this.saoPass.params.saoBias = 0.5;
+    this.saoPass.params.saoBlurRadius = 8;
+    this.saoPass.params.saoBlurDepthCutoff = 0.0015;
+    this.saoPass.params.saoScale = 30;
+    this.saoPass.params.saoKernelRadius = 30;
+  }
+
+  private addBasePass(scene: Scene, camera: PerspectiveCamera) {
+    const pass = new RenderPass(scene, camera);
+    this.composer.addPass(pass);
+  }
+
+  private newRenderTarget() {
+    this.depthTexture = new DepthTexture(window.innerWidth, window.innerHeight);
+    return new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+      depthTexture: this.depthTexture,
+      depthBuffer: true
     });
   }
 }

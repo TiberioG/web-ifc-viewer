@@ -1,6 +1,6 @@
 {
   "name": "web-ifc-viewer",
-  "version": "1.0.185",
+  "version": "1.0.202",
   "description": "IFC viewer",
   "main": "dist/index.js",
   "scripts": {
@@ -23,16 +23,16 @@
   "author": "agviegas",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/agviegas/web-ifc-viewer/issues"
+    "url": "https://github.com/ifcjs/web-ifc-viewer/issues"
   },
-  "homepage": "https://github.com/agviegas/web-ifc-viewer",
+  "homepage": "https://github.com/ifcjs/web-ifc-viewer",
   "dependencies": {
     "camera-controls": "^1.33.1",
     "dat.gui": "^0.7.7",
     "gsap": "^3.7.1",
-    "three-mesh-bvh": "^0.5.2",
-    "web-ifc": "0.0.34",
-    "web-ifc-three": "^0.0.116"
+    "three-mesh-bvh": "^0.5.11",
+    "web-ifc": "^0.0.35",
+    "web-ifc-three": "^0.0.117"
   },
   "devDependencies": {
     "@types/dat.gui": "^0.7.7",

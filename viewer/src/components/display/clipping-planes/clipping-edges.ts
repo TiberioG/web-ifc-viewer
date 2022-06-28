@@ -30,6 +30,7 @@ import {
   IFCWALLSTANDARDCASE,
   IFCWINDOW
 } from 'web-ifc';
+import { IFCModel } from 'web-ifc-three/IFC/components/IFCModel';
 import { IfcManager } from '../../ifc';
 import { IfcContext } from '../../context';
 
@@ -158,9 +159,13 @@ export class ClippingEdges {
       await this.updateIfcStyles();
     }
 
+    if (ClippingEdges.forceStyleUpdate) {
+      this.updateSubsetsTranformation();
+    }
+
     Object.keys(ClippingEdges.styles).forEach((styleName) => {
       try {
-        //this can trow error if there is an empty mesh, we still want to update other edges so we catch ere
+        // this can trow error if there is an empty mesh, we still want to update other edges so we catch ere
         this.drawEdges(styleName);
       } catch (e: unknown) {
         console.error('error in drawing edges', e);
@@ -175,16 +180,19 @@ export class ClippingEdges {
     material = ClippingEdges.defaultMaterial
   ) {
     const subsets: Mesh[] = [];
-    const ids = ClippingEdges.context.items.ifcModels.map((model) => model.modelID);
+    const models = ClippingEdges.context.items.ifcModels;
 
-    for (let i = 0; i < ids.length; i++) {
+    for (let i = 0; i < models.length; i++) {
       // eslint-disable-next-line no-await-in-loop
-      subsets.push(await this.newSubset(styleName, ids[i], categories));
+      const subset = await ClippingEdges.newSubset(styleName, models[i], categories);
+      if (subset) {
+        subsets.push(subset);
+      }
     }
 
     material.clippingPlanes = ClippingEdges.context.getClippingPlanes();
     ClippingEdges.styles[styleName] = {
-      ids,
+      ids: models.map((model) => model.modelID),
       categories,
       material,
       meshes: subsets
@@ -218,15 +226,38 @@ export class ClippingEdges {
       const name = styleNames[i];
       const style = ClippingEdges.styles[name];
 
-      const ids = ClippingEdges.context.items.ifcModels.map((model) => model.modelID);
+      const models = ClippingEdges.context.items.ifcModels;
 
       style.meshes.length = 0;
 
-      for (let i = 0; i < ids.length; i++) {
+      for (let i = 0; i < models.length; i++) {
         // eslint-disable-next-line no-await-in-loop
-        style.meshes.push(await ClippingEdges.newSubset(name, ids[i], style.categories));
+        const subset = await ClippingEdges.newSubset(name, models[i], style.categories);
+        if (subset) {
+          style.meshes.push(subset);
+        }
       }
     }
+  }
+
+  private updateSubsetsTranformation() {
+    const styleNames = Object.keys(ClippingEdges.styles);
+    for (let i = 0; i < styleNames.length; i++) {
+      const styleName = styleNames[i];
+      const style = ClippingEdges.styles[styleName];
+      style.meshes.forEach((mesh) => {
+        const model = ClippingEdges.context.items.ifcModels.find(
+          (model) => model.modelID === (mesh as IFCModel).modelID
+        );
+
+        if (model) {
+          mesh.position.copy(model.position);
+          mesh.rotation.copy(model.rotation);
+          mesh.scale.copy(model.scale);
+        }
+      });
+    }
+    ClippingEdges.forceStyleUpdate = false;
   }
 
   private async updateIfcStyles() {
@@ -241,7 +272,6 @@ export class ClippingEdges {
   }
 
   // Creates some basic styles so that users don't have to create it each time
-  // todo check all possible IFC classes are handled
   private async createDefaultIfcStyles() {
     if (Object.keys(ClippingEdges.styles).length === 0) {
       await ClippingEdges.newStyle(
@@ -280,12 +310,18 @@ export class ClippingEdges {
   }
 
   // Creates a new subset. This allows to apply a style just to a specific set of items
-  private static async newSubset(styleName: string, modelID: number, categories: number[]) {
+  private static async newSubset(styleName: string, model: IFCModel, categories: number[]) {
+    const modelID = model.modelID;
     const ids = await this.getItemIDs(modelID, categories);
+
+    // If no items were found, no geometry is created for this style
+    if (!ids.length) return null;
+
     const manager = this.ifc.loader.ifcManager;
-    // todo handle case with empty ids list
+    let subset;
+
     if (ids.length > 0) {
-      return manager.createSubset({
+      subset = manager.createSubset({
         modelID,
         ids,
         customID: styleName,
@@ -294,18 +330,13 @@ export class ClippingEdges {
         scene: ClippingEdges.context.getScene(),
         applyBVH: true
       });
+    } else {
+      subset = manager.getSubset(modelID, ClippingEdges.invisibleMaterial, styleName);
     }
-    try {
-      const subset = manager.getSubset(modelID, ClippingEdges.invisibleMaterial, styleName);
-      if (subset) {
-        manager.clearSubset(modelID, styleName, ClippingEdges.invisibleMaterial);
-        return subset;
-      }
-      // todo handling in case getSubset does not find one because above the creation was not successful
-    } catch (e) {
-      console.error('unable to find a subset', e);
-    }
-    return new Mesh();
+    subset.position.copy(model.position);
+    subset.rotation.copy(model.rotation);
+    subset.scale.copy(model.scale);
+    return subset;
   }
 
   private static async getItemIDs(modelID: number, categories: number[]) {
@@ -365,8 +396,9 @@ export class ClippingEdges {
 
     const notEmptyMeshes = style.meshes.filter((subset) => subset.geometry);
     notEmptyMeshes.forEach((mesh) => {
-      if (!mesh.geometry.boundsTree)
+      if (!mesh.geometry.boundsTree) {
         throw new Error('Boundstree not found for clipping edges subset.');
+      }
 
       this.inverseMatrix.copy(mesh.matrixWorld).invert();
       this.localPlane.copy(this.clippingPlane).applyMatrix4(this.inverseMatrix);
@@ -384,7 +416,8 @@ export class ClippingEdges {
           this.tempLine.start.copy(tri.a);
           this.tempLine.end.copy(tri.b);
           if (this.localPlane.intersectLine(this.tempLine, this.tempVector)) {
-            posAttr.setXYZ(index, this.tempVector.x, this.tempVector.y, this.tempVector.z);
+            const result = this.tempVector.applyMatrix4(mesh.matrixWorld);
+            posAttr.setXYZ(index, result.x, result.y, result.z);
             count++;
             index++;
           }
@@ -392,7 +425,8 @@ export class ClippingEdges {
           this.tempLine.start.copy(tri.b);
           this.tempLine.end.copy(tri.c);
           if (this.localPlane.intersectLine(this.tempLine, this.tempVector)) {
-            posAttr.setXYZ(index, this.tempVector.x, this.tempVector.y, this.tempVector.z);
+            const result = this.tempVector.applyMatrix4(mesh.matrixWorld);
+            posAttr.setXYZ(index, result.x, result.y, result.z);
             count++;
             index++;
           }
@@ -400,7 +434,8 @@ export class ClippingEdges {
           this.tempLine.start.copy(tri.c);
           this.tempLine.end.copy(tri.a);
           if (this.localPlane.intersectLine(this.tempLine, this.tempVector)) {
-            posAttr.setXYZ(index, this.tempVector.x, this.tempVector.y, this.tempVector.z);
+            const result = this.tempVector.applyMatrix4(mesh.matrixWorld);
+            posAttr.setXYZ(index, result.x, result.y, result.z);
             count++;
             index++;
           }
@@ -425,6 +460,7 @@ export class ClippingEdges {
       edges.mesh.geometry.fromLineSegments(ClippingEdges.basicEdges);
       const parent = ClippingEdges.edgesParent || ClippingEdges.context.getScene();
       parent.add(edges.mesh);
+      ClippingEdges.context.renderer.postProduction.excludedItems.add(edges.mesh);
     }
   }
 }

@@ -10,6 +10,7 @@ export class IfcSelection extends IfcComponent {
 
   // True only for prepick
   fastRemovePrevious = false;
+  renderOrder = 0;
 
   private modelIDs = new Set<number>();
   private selectedFaces: { [modelID: number]: Set<number> } = {};
@@ -43,7 +44,7 @@ export class IfcSelection extends IfcComponent {
       return null;
     }
 
-    const id = await this.loader.ifcManager.getExpressId(mesh.geometry, item.faceIndex);
+    const id = this.loader.ifcManager.getExpressId(mesh.geometry, item.faceIndex);
     if (id === undefined) return null;
 
     if (removePrevious) {
@@ -60,7 +61,13 @@ export class IfcSelection extends IfcComponent {
     this.selectedFaces[mesh.modelID].add(item.faceIndex);
     this.modelIDs.add(mesh.modelID);
     const selected = this.newSelection(mesh.modelID, [id], removePrevious);
+
+    selected.position.copy(mesh.position);
+    selected.rotation.copy(mesh.rotation);
+    selected.scale.copy(mesh.scale);
+
     selected.visible = true;
+    selected.renderOrder = this.renderOrder;
 
     if (focusSelection) {
       await this.focusSelection(selected);
@@ -89,6 +96,7 @@ export class IfcSelection extends IfcComponent {
     }
     this.modelIDs.add(modelID);
     const mesh = this.newSelection(modelID, ids, removePrevious);
+    mesh.renderOrder = this.renderOrder;
     if (focusSelection) await this.focusSelection(mesh);
   };
 
@@ -102,6 +110,7 @@ export class IfcSelection extends IfcComponent {
     });
     if (mesh) {
       this.meshes.add(mesh);
+      this.context.renderer.postProduction.excludedItems.add(mesh);
     }
     return mesh;
   };
@@ -111,6 +120,11 @@ export class IfcSelection extends IfcComponent {
   }
 
   private async focusSelection(mesh: Mesh) {
+    const postproductionActive = this.context.renderer.postProduction.active;
+    this.context.renderer.postProduction.active = false;
+
     await this.context.ifcCamera.targetItem(mesh);
+
+    this.context.renderer.postProduction.active = postproductionActive;
   }
 }

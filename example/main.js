@@ -1,9 +1,15 @@
 import { IfcViewerAPI } from 'web-ifc-viewer';
 import { createSideMenuButton } from './utils/gui-creator';
 import {
-  IFCSPACE, IFCOPENINGELEMENT, IFCWALLSTANDARDCASE, IFCWALL, IFCWINDOW, IFCCURTAINWALL, IFCMEMBER, IFCPLATE
+  IFCSPACE, IFCOPENINGELEMENT, IFCFURNISHINGELEMENT, IFCWALL, IFCWINDOW, IFCCURTAINWALL, IFCMEMBER, IFCPLATE
 } from 'web-ifc';
-import { MeshBasicMaterial, LineBasicMaterial, Color } from 'three';
+import {
+  MeshBasicMaterial,
+  LineBasicMaterial,
+  Color,
+  Vector2,
+  DepthTexture,
+  WebGLRenderTarget } from 'three';
 import { ClippingEdges } from 'web-ifc-viewer/dist/components/display/clipping-planes/clipping-edges';
 import Stats from 'stats.js/src/Stats';
 
@@ -11,7 +17,7 @@ const container = document.getElementById('viewer-container');
 const viewer = new IfcViewerAPI({ container, backgroundColor: new Color(255, 255, 255) });
 viewer.axes.setAxes();
 viewer.grid.setGrid();
-viewer.shadowDropper.darkness = 1.5;
+// viewer.shadowDropper.darkness = 1.5;
 
 // Set up stats
 const stats = new Stats();
@@ -29,17 +35,17 @@ viewer.IFC.loader.ifcManager.applyWebIfcConfig({
   COORDINATE_TO_ORIGIN: true
 });
 
+viewer.context.renderer.postProduction.active = true;
 
 // Setup loader
 
-const lineMaterial = new LineBasicMaterial({ color: 0x555555 });
-const baseMaterial = new MeshBasicMaterial({ color: 0xffffff, side: 2 });
+// const lineMaterial = new LineBasicMaterial({ color: 0x555555 });
+// const baseMaterial = new MeshBasicMaterial({ color: 0xffffff, side: 2 });
 
 let first = true;
 let model;
 
 const loadIfc = async (event) => {
-
 
   // tests with glTF
   // const file = event.target.files[0];
@@ -78,7 +84,7 @@ const loadIfc = async (event) => {
   });
 
   model = await viewer.IFC.loadIfc(event.target.files[0], false);
-  model.material.forEach(mat => mat.side = 2);
+  // model.material.forEach(mat => mat.side = 2);
 
   if(first) first = false
   else {
@@ -86,7 +92,7 @@ const loadIfc = async (event) => {
   }
 
   // await createFill(model.modelID);
-  viewer.edges.create(`${model.modelID}`, model.modelID, lineMaterial, baseMaterial);
+  // viewer.edges.create(`${model.modelID}`, model.modelID, lineMaterial, baseMaterial);
 
   await viewer.shadowDropper.renderShadow(model.modelID);
 
@@ -105,7 +111,7 @@ const handleKeyDown = async (event) => {
     viewer.dimensions.delete();
   }
   if (event.code === 'Escape') {
-    viewer.IFC.selector.unpickIfcItems();
+    viewer.IFC.selector.unHighlightIfcItems();
   }
 };
 
@@ -116,7 +122,7 @@ window.ondblclick = async () => {
   if (viewer.clipper.active) {
     viewer.clipper.createPlane();
   } else {
-    const result = await viewer.IFC.selector.pickIfcItem(true);
+    const result = await viewer.IFC.selector.highlightIfcItem(true);
     if (!result) return;
     const { modelID, id } = result;
     const props = await viewer.IFC.getProperties(modelID, id, true, false);

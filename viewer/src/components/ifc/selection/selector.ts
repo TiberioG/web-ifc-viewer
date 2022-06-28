@@ -16,13 +16,14 @@ export class IfcSelector {
 
   constructor(private context: IfcContext, private ifc: IfcManager) {
     this.defSelectMat = this.initializeDefMaterial(0xff33ff, 0.3);
-    this.defPreselectMat = this.initializeDefMaterial(0xffccff, 0.5);
+    this.defPreselectMat = this.initializeDefMaterial(0xff55ff, 0.5);
     this.defHighlightMat = this.initializeDefMaterial(0xeeeeee, 0.05);
 
     this.preselection = new IfcSelection(context, this.ifc.loader, this.defPreselectMat);
     this.preselection.fastRemovePrevious = true;
     this.selection = new IfcSelection(context, this.ifc.loader, this.defSelectMat);
     this.highlight = new IfcSelection(context, this.ifc.loader);
+    this.highlight.renderOrder = -1;
   }
 
   dispose() {
@@ -65,6 +66,7 @@ export class IfcSelector {
     if (!found) return null;
     const result = await this.selection.pick(found, focusSelection, removePrevious);
     if (result == null || result.modelID == null || result.id == null) return null;
+
     return result;
   }
 
@@ -81,6 +83,7 @@ export class IfcSelector {
 
     const result = await this.highlight.pick(found, focusSelection, removePrevious);
     if (result == null || result.modelID == null || result.id == null) return null;
+
     return result;
   }
 
@@ -153,6 +156,9 @@ export class IfcSelector {
   unHighlightIfcItems() {
     this.context.items.ifcModels.forEach((model) => this.unHighlightItem(model));
     this.highlight.unpick();
+    if (this.context.renderer.postProduction.active) {
+      this.context.renderer.postProduction.visible = true;
+    }
   }
 
   private unHighlightItem(model: IFCModel) {
@@ -166,11 +172,17 @@ export class IfcSelector {
   private fadeAwayModels() {
     this.context.items.ifcModels.forEach((model) => {
       if (!model.userData[this.userDataField]) {
-        model.userData[this.userDataField] = new Mesh(model.geometry, this.defHighlightMat);
+        const mesh = new Mesh(model.geometry, this.defHighlightMat);
+        model.userData[this.userDataField] = mesh;
+        this.context.renderer.postProduction.excludedItems.add(mesh);
       }
 
       if (model.parent) {
-        model.parent.add(model.userData[this.userDataField]);
+        const fadedMesh = model.userData[this.userDataField];
+        fadedMesh.position.copy(model.position);
+        fadedMesh.rotation.copy(model.rotation);
+        fadedMesh.scale.copy(model.scale);
+        model.parent.add(fadedMesh);
         model.removeFromParent();
       }
     });

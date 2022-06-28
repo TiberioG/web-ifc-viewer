@@ -28003,7 +28003,7 @@
 
     SpriteMaterial.prototype.isSpriteMaterial = true;
 
-    let _geometry;
+    let _geometry$2;
 
     const _intersectPoint = /*@__PURE__*/ new Vector3();
     const _worldScale = /*@__PURE__*/ new Vector3();
@@ -28029,9 +28029,9 @@
 
     		this.type = 'Sprite';
 
-    		if ( _geometry === undefined ) {
+    		if ( _geometry$2 === undefined ) {
 
-    			_geometry = new BufferGeometry();
+    			_geometry$2 = new BufferGeometry();
 
     			const float32Array = new Float32Array( [
     				- 0.5, - 0.5, 0, 0, 0,
@@ -28042,13 +28042,13 @@
 
     			const interleavedBuffer = new InterleavedBuffer( float32Array, 5 );
 
-    			_geometry.setIndex( [ 0, 1, 2,	0, 2, 3 ] );
-    			_geometry.setAttribute( 'position', new InterleavedBufferAttribute( interleavedBuffer, 3, 0, false ) );
-    			_geometry.setAttribute( 'uv', new InterleavedBufferAttribute( interleavedBuffer, 2, 3, false ) );
+    			_geometry$2.setIndex( [ 0, 1, 2,	0, 2, 3 ] );
+    			_geometry$2.setAttribute( 'position', new InterleavedBufferAttribute( interleavedBuffer, 3, 0, false ) );
+    			_geometry$2.setAttribute( 'uv', new InterleavedBufferAttribute( interleavedBuffer, 2, 3, false ) );
 
     		}
 
-    		this.geometry = _geometry;
+    		this.geometry = _geometry$2;
     		this.material = ( material !== undefined ) ? material : new SpriteMaterial();
 
     		this.center = new Vector2( 0.5, 0.5 );
@@ -47018,18 +47018,10 @@
             var quit_ = function(status, toThrow) {
               throw toThrow;
             };
-            var ENVIRONMENT_IS_WEB = false;
-            var ENVIRONMENT_IS_WORKER = false;
-            var ENVIRONMENT_IS_NODE = false;
-            var ENVIRONMENT_IS_SHELL = false;
-            ENVIRONMENT_IS_WEB = typeof window === "object";
-            ENVIRONMENT_IS_WORKER = typeof importScripts === "function";
-            ENVIRONMENT_IS_NODE = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
-            ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+            var ENVIRONMENT_IS_WEB = typeof window === "object";
+            var ENVIRONMENT_IS_WORKER = typeof importScripts === "function";
+            var ENVIRONMENT_IS_NODE = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
             var ENVIRONMENT_IS_PTHREAD = Module["ENVIRONMENT_IS_PTHREAD"] || false;
-            if (ENVIRONMENT_IS_PTHREAD) {
-              buffer = Module["buffer"];
-            }
             var scriptDirectory = "";
             function locateFile(path) {
               if (Module["locateFile"]) {
@@ -47037,7 +47029,7 @@
               }
               return scriptDirectory + path;
             }
-            var read_, readBinary;
+            var read_, readAsync, readBinary;
             var nodeFS;
             var nodePath;
             if (ENVIRONMENT_IS_NODE) {
@@ -47062,6 +47054,19 @@
                 assert(ret.buffer);
                 return ret;
               };
+              readAsync = function readAsync2(filename, onload, onerror) {
+                if (!nodeFS)
+                  nodeFS = __require("fs");
+                if (!nodePath)
+                  nodePath = __require("path");
+                filename = nodePath["normalize"](filename);
+                nodeFS["readFile"](filename, function(err2, data) {
+                  if (err2)
+                    onerror(err2);
+                  else
+                    onload(data.buffer);
+                });
+              };
               if (process["argv"].length > 1) {
                 thisProgram = process["argv"][1].replace(/\\/g, "/");
               }
@@ -47072,7 +47077,11 @@
                 }
               });
               process["on"]("unhandledRejection", abort);
-              quit_ = function(status) {
+              quit_ = function(status, toThrow) {
+                if (keepRuntimeAlive()) {
+                  process["exitCode"] = status;
+                  throw toThrow;
+                }
                 process["exit"](status);
               };
               Module["inspect"] = function() {
@@ -47086,35 +47095,6 @@
                 throw e;
               }
               global.Worker = nodeWorkerThreads.Worker;
-            } else if (ENVIRONMENT_IS_SHELL) {
-              if (typeof read != "undefined") {
-                read_ = function shell_read(f) {
-                  return read(f);
-                };
-              }
-              readBinary = function readBinary2(f) {
-                var data;
-                if (typeof readbuffer === "function") {
-                  return new Uint8Array(readbuffer(f));
-                }
-                data = read(f, "binary");
-                assert(typeof data === "object");
-                return data;
-              };
-              if (typeof scriptArgs != "undefined") {
-                scriptArgs;
-              }
-              if (typeof quit === "function") {
-                quit_ = function(status) {
-                  quit(status);
-                };
-              }
-              if (typeof print !== "undefined") {
-                if (typeof console === "undefined")
-                  console = {};
-                console.log = print;
-                console.warn = console.error = typeof printErr !== "undefined" ? printErr : print;
-              }
             } else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
               if (ENVIRONMENT_IS_WORKER) {
                 scriptDirectory = self.location.href;
@@ -47146,15 +47126,28 @@
                   assert(ret.buffer);
                   return ret;
                 };
+                readAsync = function readAsync2(filename, onload, onerror) {
+                  if (!nodeFS)
+                    nodeFS = __require("fs");
+                  if (!nodePath)
+                    nodePath = __require("path");
+                  filename = nodePath["normalize"](filename);
+                  nodeFS["readFile"](filename, function(err2, data) {
+                    if (err2)
+                      onerror(err2);
+                    else
+                      onload(data.buffer);
+                  });
+                };
               } else {
-                read_ = function shell_read(url) {
+                read_ = function(url) {
                   var xhr = new XMLHttpRequest();
                   xhr.open("GET", url, false);
                   xhr.send(null);
                   return xhr.responseText;
                 };
                 if (ENVIRONMENT_IS_WORKER) {
-                  readBinary = function readBinary2(url) {
+                  readBinary = function(url) {
                     var xhr = new XMLHttpRequest();
                     xhr.open("GET", url, false);
                     xhr.responseType = "arraybuffer";
@@ -47162,6 +47155,20 @@
                     return new Uint8Array(xhr.response);
                   };
                 }
+                readAsync = function(url, onload, onerror) {
+                  var xhr = new XMLHttpRequest();
+                  xhr.open("GET", url, true);
+                  xhr.responseType = "arraybuffer";
+                  xhr.onload = function() {
+                    if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
+                      onload(xhr.response);
+                      return;
+                    }
+                    onerror();
+                  };
+                  xhr.onerror = onerror;
+                  xhr.send(null);
+                };
               }
             } else ;
             if (ENVIRONMENT_IS_NODE) {
@@ -47200,49 +47207,61 @@
             var wasmBinary;
             if (Module["wasmBinary"])
               wasmBinary = Module["wasmBinary"];
-            var noExitRuntime;
-            if (Module["noExitRuntime"])
-              noExitRuntime = Module["noExitRuntime"];
+            var noExitRuntime = Module["noExitRuntime"] || true;
             if (typeof WebAssembly !== "object") {
               abort("no native wasm support detected");
             }
             var wasmMemory;
             var wasmModule;
-            var threadInfoStruct = 0;
             var ABORT = false;
             function assert(condition, text) {
               if (!condition) {
                 abort("Assertion failed: " + text);
               }
             }
+            function TextDecoderWrapper(encoding) {
+              var textDecoder = new TextDecoder(encoding);
+              this.decode = function(data) {
+                if (data.buffer instanceof SharedArrayBuffer) {
+                  data = new Uint8Array(data);
+                }
+                return textDecoder.decode.call(textDecoder, data);
+              };
+            }
+            var UTF8Decoder = typeof TextDecoder !== "undefined" ? new TextDecoderWrapper("utf8") : void 0;
             function UTF8ArrayToString(heap, idx, maxBytesToRead) {
               idx >>>= 0;
               var endIdx = idx + maxBytesToRead;
-              var str = "";
-              while (!(idx >= endIdx)) {
-                var u0 = heap[idx++ >>> 0];
-                if (!u0)
-                  return str;
-                if (!(u0 & 128)) {
-                  str += String.fromCharCode(u0);
-                  continue;
-                }
-                var u1 = heap[idx++ >>> 0] & 63;
-                if ((u0 & 224) == 192) {
-                  str += String.fromCharCode((u0 & 31) << 6 | u1);
-                  continue;
-                }
-                var u2 = heap[idx++ >>> 0] & 63;
-                if ((u0 & 240) == 224) {
-                  u0 = (u0 & 15) << 12 | u1 << 6 | u2;
-                } else {
-                  u0 = (u0 & 7) << 18 | u1 << 12 | u2 << 6 | heap[idx++ >>> 0] & 63;
-                }
-                if (u0 < 65536) {
-                  str += String.fromCharCode(u0);
-                } else {
-                  var ch = u0 - 65536;
-                  str += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
+              var endPtr = idx;
+              while (heap[endPtr >>> 0] && !(endPtr >= endIdx))
+                ++endPtr;
+              if (endPtr - idx > 16 && heap.subarray && UTF8Decoder) {
+                return UTF8Decoder.decode(heap.subarray(idx >>> 0, endPtr >>> 0));
+              } else {
+                var str = "";
+                while (idx < endPtr) {
+                  var u0 = heap[idx++ >>> 0];
+                  if (!(u0 & 128)) {
+                    str += String.fromCharCode(u0);
+                    continue;
+                  }
+                  var u1 = heap[idx++ >>> 0] & 63;
+                  if ((u0 & 224) == 192) {
+                    str += String.fromCharCode((u0 & 31) << 6 | u1);
+                    continue;
+                  }
+                  var u2 = heap[idx++ >>> 0] & 63;
+                  if ((u0 & 240) == 224) {
+                    u0 = (u0 & 15) << 12 | u1 << 6 | u2;
+                  } else {
+                    u0 = (u0 & 7) << 18 | u1 << 12 | u2 << 6 | heap[idx++ >>> 0] & 63;
+                  }
+                  if (u0 < 65536) {
+                    str += String.fromCharCode(u0);
+                  } else {
+                    var ch = u0 - 65536;
+                    str += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
+                  }
                 }
               }
               return str;
@@ -47310,15 +47329,26 @@
               }
               return len;
             }
+            var UTF16Decoder = typeof TextDecoder !== "undefined" ? new TextDecoderWrapper("utf-16le") : void 0;
             function UTF16ToString(ptr, maxBytesToRead) {
-              var str = "";
-              for (var i = 0; !(i >= maxBytesToRead / 2); ++i) {
-                var codeUnit = GROWABLE_HEAP_I16()[ptr + i * 2 >> 1];
-                if (codeUnit == 0)
-                  break;
-                str += String.fromCharCode(codeUnit);
+              var endPtr = ptr;
+              var idx = endPtr >> 1;
+              var maxIdx = idx + maxBytesToRead / 2;
+              while (!(idx >= maxIdx) && GROWABLE_HEAP_U16()[idx >>> 0])
+                ++idx;
+              endPtr = idx << 1;
+              if (endPtr - ptr > 32 && UTF16Decoder) {
+                return UTF16Decoder.decode(GROWABLE_HEAP_U8().subarray(ptr >>> 0, endPtr >>> 0));
+              } else {
+                var str = "";
+                for (var i = 0; !(i >= maxBytesToRead / 2); ++i) {
+                  var codeUnit = GROWABLE_HEAP_I16()[ptr + i * 2 >>> 1];
+                  if (codeUnit == 0)
+                    break;
+                  str += String.fromCharCode(codeUnit);
+                }
+                return str;
               }
-              return str;
             }
             function stringToUTF16(str, outPtr, maxBytesToWrite) {
               if (maxBytesToWrite === void 0) {
@@ -47331,10 +47361,10 @@
               var numCharsToWrite = maxBytesToWrite < str.length * 2 ? maxBytesToWrite / 2 : str.length;
               for (var i = 0; i < numCharsToWrite; ++i) {
                 var codeUnit = str.charCodeAt(i);
-                GROWABLE_HEAP_I16()[outPtr >> 1] = codeUnit;
+                GROWABLE_HEAP_I16()[outPtr >>> 1] = codeUnit;
                 outPtr += 2;
               }
-              GROWABLE_HEAP_I16()[outPtr >> 1] = 0;
+              GROWABLE_HEAP_I16()[outPtr >>> 1] = 0;
               return outPtr - startPtr;
             }
             function lengthBytesUTF16(str) {
@@ -47344,7 +47374,7 @@
               var i = 0;
               var str = "";
               while (!(i >= maxBytesToRead / 4)) {
-                var utf32 = GROWABLE_HEAP_I32()[ptr + i * 4 >> 2];
+                var utf32 = GROWABLE_HEAP_I32()[ptr + i * 4 >>> 2];
                 if (utf32 == 0)
                   break;
                 ++i;
@@ -47372,12 +47402,12 @@
                   var trailSurrogate = str.charCodeAt(++i);
                   codeUnit = 65536 + ((codeUnit & 1023) << 10) | trailSurrogate & 1023;
                 }
-                GROWABLE_HEAP_I32()[outPtr >> 2] = codeUnit;
+                GROWABLE_HEAP_I32()[outPtr >>> 2] = codeUnit;
                 outPtr += 4;
                 if (outPtr + 4 > endPtr)
                   break;
               }
-              GROWABLE_HEAP_I32()[outPtr >> 2] = 0;
+              GROWABLE_HEAP_I32()[outPtr >>> 2] = 0;
               return outPtr - startPtr;
             }
             function lengthBytesUTF32(str) {
@@ -47391,14 +47421,14 @@
               return len;
             }
             function writeArrayToMemory(array, buffer2) {
-              GROWABLE_HEAP_I8().set(array, buffer2);
+              GROWABLE_HEAP_I8().set(array, buffer2 >>> 0);
             }
             function writeAsciiToMemory(str, buffer2, dontAddNull) {
               for (var i = 0; i < str.length; ++i) {
-                GROWABLE_HEAP_I8()[buffer2++ >> 0] = str.charCodeAt(i);
+                GROWABLE_HEAP_I8()[buffer2++ >>> 0] = str.charCodeAt(i);
               }
               if (!dontAddNull)
-                GROWABLE_HEAP_I8()[buffer2 >> 0] = 0;
+                GROWABLE_HEAP_I8()[buffer2 >>> 0] = 0;
             }
             function alignUp(x, multiple) {
               if (x % multiple > 0) {
@@ -47407,6 +47437,9 @@
               return x;
             }
             var buffer, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
+            if (ENVIRONMENT_IS_PTHREAD) {
+              buffer = Module["buffer"];
+            }
             function updateGlobalBufferAndViews(buf) {
               buffer = buf;
               Module["HEAP8"] = HEAP8 = new Int8Array(buf);
@@ -47446,6 +47479,10 @@
             var __ATINIT__ = [];
             var __ATMAIN__ = [];
             var __ATPOSTRUN__ = [];
+            var runtimeKeepaliveCounter = 0;
+            function keepRuntimeAlive() {
+              return noExitRuntime || runtimeKeepaliveCounter > 0;
+            }
             function preRun() {
               if (ENVIRONMENT_IS_PTHREAD)
                 return;
@@ -47459,14 +47496,16 @@
               callRuntimeCallbacks(__ATPRERUN__);
             }
             function initRuntime() {
+              if (ENVIRONMENT_IS_PTHREAD)
+                return;
               if (!Module["noFSInit"] && !FS.init.initialized)
                 FS.init();
+              FS.ignorePermissions = false;
               callRuntimeCallbacks(__ATINIT__);
             }
             function preMain() {
               if (ENVIRONMENT_IS_PTHREAD)
                 return;
-              FS.ignorePermissions = false;
               callRuntimeCallbacks(__ATMAIN__);
             }
             function postRun() {
@@ -47484,13 +47523,18 @@
             function addOnPreRun(cb) {
               __ATPRERUN__.unshift(cb);
             }
+            function addOnInit(cb) {
+              __ATINIT__.unshift(cb);
+            }
             function addOnPostRun(cb) {
               __ATPOSTRUN__.unshift(cb);
             }
             var runDependencies = 0;
             var dependenciesFulfilled = null;
+            function getUniqueRunDependency(id) {
+              return id;
+            }
             function addRunDependency(id) {
-              assert(!ENVIRONMENT_IS_PTHREAD, "addRunDependency cannot be used in a pthread worker");
               runDependencies++;
               if (Module["monitorRunDependencies"]) {
                 Module["monitorRunDependencies"](runDependencies);
@@ -47525,28 +47569,25 @@
               readyPromiseReject(e);
               throw e;
             }
-            function hasPrefix(str, prefix) {
-              return String.prototype.startsWith ? str.startsWith(prefix) : str.indexOf(prefix) === 0;
-            }
             var dataURIPrefix = "data:application/octet-stream;base64,";
             function isDataURI(filename) {
-              return hasPrefix(filename, dataURIPrefix);
+              return filename.startsWith(dataURIPrefix);
             }
-            var fileURIPrefix = "file://";
             function isFileURI(filename) {
-              return hasPrefix(filename, fileURIPrefix);
+              return filename.startsWith("file://");
             }
-            var wasmBinaryFile = "web-ifc-mt.wasm";
+            var wasmBinaryFile;
+            wasmBinaryFile = "web-ifc-mt.wasm";
             if (!isDataURI(wasmBinaryFile)) {
               wasmBinaryFile = locateFile(wasmBinaryFile);
             }
-            function getBinary() {
+            function getBinary(file) {
               try {
-                if (wasmBinary) {
+                if (file == wasmBinaryFile && wasmBinary) {
                   return new Uint8Array(wasmBinary);
                 }
                 if (readBinary) {
-                  return readBinary(wasmBinaryFile);
+                  return readBinary(file);
                 } else {
                   throw "both async and sync fetching of the wasm failed";
                 }
@@ -47555,24 +47596,38 @@
               }
             }
             function getBinaryPromise() {
-              if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === "function" && !isFileURI(wasmBinaryFile)) {
-                return fetch(wasmBinaryFile, { credentials: "same-origin" }).then(function(response) {
-                  if (!response["ok"]) {
-                    throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+              if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
+                if (typeof fetch === "function" && !isFileURI(wasmBinaryFile)) {
+                  return fetch(wasmBinaryFile, { credentials: "same-origin" }).then(function(response) {
+                    if (!response["ok"]) {
+                      throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+                    }
+                    return response["arrayBuffer"]();
+                  }).catch(function() {
+                    return getBinary(wasmBinaryFile);
+                  });
+                } else {
+                  if (readAsync) {
+                    return new Promise(function(resolve, reject) {
+                      readAsync(wasmBinaryFile, function(response) {
+                        resolve(new Uint8Array(response));
+                      }, reject);
+                    });
                   }
-                  return response["arrayBuffer"]();
-                }).catch(function() {
-                  return getBinary();
-                });
+                }
               }
-              return Promise.resolve().then(getBinary);
+              return Promise.resolve().then(function() {
+                return getBinary(wasmBinaryFile);
+              });
             }
             function createWasm() {
               var info = { "a": asmLibraryArg };
               function receiveInstance(instance, module2) {
                 var exports3 = instance.exports;
                 Module["asm"] = exports3;
-                wasmTable = Module["asm"]["pa"];
+                wasmTable = Module["asm"]["ta"];
+                addOnInit(Module["asm"]["oa"]);
+                PThread.tlsInitFunctions.push(Module["asm"]["sa"]);
                 wasmModule = module2;
                 if (!ENVIRONMENT_IS_PTHREAD) {
                   var numWorkersToLoad = PThread.unusedWorkers.length;
@@ -47587,12 +47642,13 @@
               if (!ENVIRONMENT_IS_PTHREAD) {
                 addRunDependency();
               }
-              function receiveInstantiatedSource(output) {
-                receiveInstance(output["instance"], output["module"]);
+              function receiveInstantiationResult(result) {
+                receiveInstance(result["instance"], result["module"]);
               }
               function instantiateArrayBuffer(receiver) {
                 return getBinaryPromise().then(function(binary) {
-                  return WebAssembly.instantiate(binary, info);
+                  var result = WebAssembly.instantiate(binary, info);
+                  return result;
                 }).then(receiver, function(reason) {
                   err("failed to asynchronously prepare wasm: " + reason);
                   abort(reason);
@@ -47602,14 +47658,14 @@
                 if (!wasmBinary && typeof WebAssembly.instantiateStreaming === "function" && !isDataURI(wasmBinaryFile) && !isFileURI(wasmBinaryFile) && typeof fetch === "function") {
                   return fetch(wasmBinaryFile, { credentials: "same-origin" }).then(function(response) {
                     var result = WebAssembly.instantiateStreaming(response, info);
-                    return result.then(receiveInstantiatedSource, function(reason) {
+                    return result.then(receiveInstantiationResult, function(reason) {
                       err("wasm streaming compile failed: " + reason);
                       err("falling back to ArrayBuffer instantiation");
-                      return instantiateArrayBuffer(receiveInstantiatedSource);
+                      return instantiateArrayBuffer(receiveInstantiationResult);
                     });
                   });
                 } else {
-                  return instantiateArrayBuffer(receiveInstantiatedSource);
+                  return instantiateArrayBuffer(receiveInstantiationResult);
                 }
               }
               if (Module["instantiateWasm"]) {
@@ -47626,12 +47682,12 @@
             }
             var tempDouble;
             var tempI64;
-            var ASM_CONSTS = { 41793: function($0, $1) {
-              setTimeout(function() {
-                _do_emscripten_dispatch_to_thread($0, $1);
-              }, 0);
-            }, 41871: function() {
+            var ASM_CONSTS = { 44848: function() {
               throw "Canceled!";
+            }, 44866: function($0, $1) {
+              setTimeout(function() {
+                __emscripten_do_dispatch_to_thread($0, $1);
+              }, 0);
             } };
             function initPthreadsJS() {
               PThread.initRuntime();
@@ -47655,32 +47711,6 @@
                 }
               }
             }
-            function dynCallLegacy(sig, ptr, args) {
-              if (args && args.length) {
-                return Module["dynCall_" + sig].apply(null, [ptr].concat(args));
-              }
-              return Module["dynCall_" + sig].call(null, ptr);
-            }
-            function dynCall(sig, ptr, args) {
-              if (sig.indexOf("j") != -1) {
-                return dynCallLegacy(sig, ptr, args);
-              }
-              return wasmTable.get(ptr).apply(null, args);
-            }
-            Module["dynCall"] = dynCall;
-            var __pthread_ptr = 0;
-            var __pthread_is_main_runtime_thread = 0;
-            var __pthread_is_main_browser_thread = 0;
-            function registerPthreadPtr(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
-              pthreadPtr = pthreadPtr | 0;
-              isMainBrowserThread = isMainBrowserThread | 0;
-              isMainRuntimeThread = isMainRuntimeThread | 0;
-              __pthread_ptr = pthreadPtr;
-              __pthread_is_main_browser_thread = isMainBrowserThread;
-              __pthread_is_main_runtime_thread = isMainRuntimeThread;
-            }
-            Module["registerPthreadPtr"] = registerPthreadPtr;
-            var ERRNO_CODES = { EPERM: 63, ENOENT: 44, ESRCH: 71, EINTR: 27, EIO: 29, ENXIO: 60, E2BIG: 1, ENOEXEC: 45, EBADF: 8, ECHILD: 12, EAGAIN: 6, EWOULDBLOCK: 6, ENOMEM: 48, EACCES: 2, EFAULT: 21, ENOTBLK: 105, EBUSY: 10, EEXIST: 20, EXDEV: 75, ENODEV: 43, ENOTDIR: 54, EISDIR: 31, EINVAL: 28, ENFILE: 41, EMFILE: 33, ENOTTY: 59, ETXTBSY: 74, EFBIG: 22, ENOSPC: 51, ESPIPE: 70, EROFS: 69, EMLINK: 34, EPIPE: 64, EDOM: 18, ERANGE: 68, ENOMSG: 49, EIDRM: 24, ECHRNG: 106, EL2NSYNC: 156, EL3HLT: 107, EL3RST: 108, ELNRNG: 109, EUNATCH: 110, ENOCSI: 111, EL2HLT: 112, EDEADLK: 16, ENOLCK: 46, EBADE: 113, EBADR: 114, EXFULL: 115, ENOANO: 104, EBADRQC: 103, EBADSLT: 102, EDEADLOCK: 16, EBFONT: 101, ENOSTR: 100, ENODATA: 116, ETIME: 117, ENOSR: 118, ENONET: 119, ENOPKG: 120, EREMOTE: 121, ENOLINK: 47, EADV: 122, ESRMNT: 123, ECOMM: 124, EPROTO: 65, EMULTIHOP: 36, EDOTDOT: 125, EBADMSG: 9, ENOTUNIQ: 126, EBADFD: 127, EREMCHG: 128, ELIBACC: 129, ELIBBAD: 130, ELIBSCN: 131, ELIBMAX: 132, ELIBEXEC: 133, ENOSYS: 52, ENOTEMPTY: 55, ENAMETOOLONG: 37, ELOOP: 32, EOPNOTSUPP: 138, EPFNOSUPPORT: 139, ECONNRESET: 15, ENOBUFS: 42, EAFNOSUPPORT: 5, EPROTOTYPE: 67, ENOTSOCK: 57, ENOPROTOOPT: 50, ESHUTDOWN: 140, ECONNREFUSED: 14, EADDRINUSE: 3, ECONNABORTED: 13, ENETUNREACH: 40, ENETDOWN: 38, ETIMEDOUT: 73, EHOSTDOWN: 142, EHOSTUNREACH: 23, EINPROGRESS: 26, EALREADY: 7, EDESTADDRREQ: 17, EMSGSIZE: 35, EPROTONOSUPPORT: 66, ESOCKTNOSUPPORT: 137, EADDRNOTAVAIL: 4, ENETRESET: 39, EISCONN: 30, ENOTCONN: 53, ETOOMANYREFS: 141, EUSERS: 136, EDQUOT: 19, ESTALE: 72, ENOTSUP: 138, ENOMEDIUM: 148, EILSEQ: 25, EOVERFLOW: 61, ECANCELED: 11, ENOTRECOVERABLE: 56, EOWNERDEAD: 62, ESTRPIPE: 135 };
             function _emscripten_futex_wake(addr, count) {
               if (addr <= 0 || addr > GROWABLE_HEAP_I8().length || addr & true || count < 0)
                 return -28;
@@ -47688,10 +47718,10 @@
                 return 0;
               if (count >= 2147483647)
                 count = Infinity;
-              var mainThreadWaitAddress = Atomics.load(GROWABLE_HEAP_I32(), PThread.mainThreadFutex >> 2);
+              var mainThreadWaitAddress = Atomics.load(GROWABLE_HEAP_I32(), __emscripten_main_thread_futex >> 2);
               var mainThreadWoken = 0;
               if (mainThreadWaitAddress == addr) {
-                var loadedAddr = Atomics.compareExchange(GROWABLE_HEAP_I32(), PThread.mainThreadFutex >> 2, mainThreadWaitAddress, 0);
+                var loadedAddr = Atomics.compareExchange(GROWABLE_HEAP_I32(), __emscripten_main_thread_futex >> 2, mainThreadWaitAddress, 0);
                 if (loadedAddr == mainThreadWaitAddress) {
                   --count;
                   mainThreadWoken = 1;
@@ -47710,7 +47740,7 @@
                 throw "Internal Error! killThread() can only ever be called from main application thread!";
               if (!pthread_ptr)
                 throw "Internal Error! Null pthread_ptr in killThread!";
-              GROWABLE_HEAP_I32()[pthread_ptr + 12 >> 2] = 0;
+              GROWABLE_HEAP_I32()[pthread_ptr + 12 >>> 2] = 0;
               var pthread = PThread.pthreads[pthread_ptr];
               pthread.worker.terminate();
               PThread.freeThreadData(pthread);
@@ -47730,68 +47760,57 @@
                 throw "Internal Error! cleanupThread() can only ever be called from main application thread!";
               if (!pthread_ptr)
                 throw "Internal Error! Null pthread_ptr in cleanupThread!";
-              GROWABLE_HEAP_I32()[pthread_ptr + 12 >> 2] = 0;
               var pthread = PThread.pthreads[pthread_ptr];
               if (pthread) {
+                GROWABLE_HEAP_I32()[pthread_ptr + 12 >>> 2] = 0;
                 var worker = pthread.worker;
                 PThread.returnWorkerToPool(worker);
               }
             }
-            var PThread = { MAIN_THREAD_ID: 1, mainThreadInfo: { schedPolicy: 0, schedPrio: 0 }, unusedWorkers: [], runningWorkers: [], initMainThreadBlock: function() {
+            var PThread = { unusedWorkers: [], runningWorkers: [], tlsInitFunctions: [], initMainThreadBlock: function() {
               var pthreadPoolSize = navigator.hardwareConcurrency;
               for (var i = 0; i < pthreadPoolSize; ++i) {
                 PThread.allocateUnusedWorker();
               }
             }, initRuntime: function() {
-              PThread.mainThreadBlock = _malloc(232);
-              for (var i = 0; i < 232 / 4; ++i)
-                GROWABLE_HEAP_U32()[PThread.mainThreadBlock / 4 + i] = 0;
-              GROWABLE_HEAP_I32()[PThread.mainThreadBlock + 12 >> 2] = PThread.mainThreadBlock;
-              var headPtr = PThread.mainThreadBlock + 156;
-              GROWABLE_HEAP_I32()[headPtr >> 2] = headPtr;
+              var tb = _malloc(228);
+              for (var i = 0; i < 228 / 4; ++i)
+                GROWABLE_HEAP_U32()[tb / 4 + i >>> 0] = 0;
+              GROWABLE_HEAP_I32()[tb + 12 >>> 2] = tb;
+              var headPtr = tb + 152;
+              GROWABLE_HEAP_I32()[headPtr >>> 2] = headPtr;
               var tlsMemory = _malloc(512);
               for (var i = 0; i < 128; ++i)
-                GROWABLE_HEAP_U32()[tlsMemory / 4 + i] = 0;
-              Atomics.store(GROWABLE_HEAP_U32(), PThread.mainThreadBlock + 104 >> 2, tlsMemory);
-              Atomics.store(GROWABLE_HEAP_U32(), PThread.mainThreadBlock + 40 >> 2, PThread.mainThreadBlock);
-              Atomics.store(GROWABLE_HEAP_U32(), PThread.mainThreadBlock + 44 >> 2, 42);
-              PThread.initShared();
-              registerPthreadPtr(PThread.mainThreadBlock, !ENVIRONMENT_IS_WORKER, 1);
-              _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
+                GROWABLE_HEAP_U32()[tlsMemory / 4 + i >>> 0] = 0;
+              Atomics.store(GROWABLE_HEAP_U32(), tb + 100 >> 2, tlsMemory);
+              Atomics.store(GROWABLE_HEAP_U32(), tb + 40 >> 2, tb);
+              __emscripten_thread_init(tb, !ENVIRONMENT_IS_WORKER, 1);
+              _emscripten_register_main_browser_thread_id(tb);
             }, initWorker: function() {
-              PThread.initShared();
-              readyPromiseResolve(Module);
-            }, initShared: function() {
-              PThread.mainThreadFutex = _main_thread_futex;
-            }, pthreads: {}, threadExitHandlers: [], setThreadStatus: function() {
-            }, runExitHandlers: function() {
+            }, pthreads: {}, threadExitHandlers: [], runExitHandlers: function() {
               while (PThread.threadExitHandlers.length > 0) {
                 PThread.threadExitHandlers.pop()();
               }
-              if (ENVIRONMENT_IS_PTHREAD && threadInfoStruct)
-                ___pthread_tsd_run_dtors();
+              ___pthread_tsd_run_dtors();
+            }, runExitHandlersAndDeinitThread: function(tb, exitCode) {
+              Atomics.store(GROWABLE_HEAP_U32(), tb + 56 >> 2, 1);
+              Atomics.store(GROWABLE_HEAP_U32(), tb + 60 >> 2, 0);
+              PThread.runExitHandlers();
+              Atomics.store(GROWABLE_HEAP_U32(), tb + 4 >> 2, exitCode);
+              Atomics.store(GROWABLE_HEAP_U32(), tb + 0 >> 2, 1);
+              _emscripten_futex_wake(tb + 0, 2147483647);
+              __emscripten_thread_init(0, 0, 0);
+            }, setExitStatus: function(status) {
             }, threadExit: function(exitCode) {
               var tb = _pthread_self();
               if (tb) {
-                Atomics.store(GROWABLE_HEAP_U32(), tb + 4 >> 2, exitCode);
-                Atomics.store(GROWABLE_HEAP_U32(), tb + 0 >> 2, 1);
-                Atomics.store(GROWABLE_HEAP_U32(), tb + 60 >> 2, 1);
-                Atomics.store(GROWABLE_HEAP_U32(), tb + 64 >> 2, 0);
-                PThread.runExitHandlers();
-                _emscripten_futex_wake(tb + 0, 2147483647);
-                registerPthreadPtr(0, 0, 0);
-                threadInfoStruct = 0;
+                PThread.runExitHandlersAndDeinitThread(tb, exitCode);
                 if (ENVIRONMENT_IS_PTHREAD) {
                   postMessage({ "cmd": "exit" });
                 }
               }
             }, threadCancel: function() {
-              PThread.runExitHandlers();
-              Atomics.store(GROWABLE_HEAP_U32(), threadInfoStruct + 4 >> 2, -1);
-              Atomics.store(GROWABLE_HEAP_U32(), threadInfoStruct + 0 >> 2, 1);
-              _emscripten_futex_wake(threadInfoStruct + 0, 2147483647);
-              threadInfoStruct = 0;
-              registerPthreadPtr(0, 0, 0);
+              PThread.runExitHandlersAndDeinitThread(_pthread_self(), -1);
               postMessage({ "cmd": "cancelDone" });
             }, terminateAllThreads: function() {
               for (var t in PThread.pthreads) {
@@ -47817,8 +47836,8 @@
               if (!pthread)
                 return;
               if (pthread.threadInfoStruct) {
-                var tlsMemory = GROWABLE_HEAP_I32()[pthread.threadInfoStruct + 104 >> 2];
-                GROWABLE_HEAP_I32()[pthread.threadInfoStruct + 104 >> 2] = 0;
+                var tlsMemory = GROWABLE_HEAP_I32()[pthread.threadInfoStruct + 100 >>> 2];
+                GROWABLE_HEAP_I32()[pthread.threadInfoStruct + 100 >>> 2] = 0;
                 _free(tlsMemory);
                 _free(pthread.threadInfoStruct);
               }
@@ -47829,12 +47848,25 @@
               if (pthread.worker)
                 pthread.worker.pthread = null;
             }, returnWorkerToPool: function(worker) {
-              delete PThread.pthreads[worker.pthread.thread];
-              PThread.unusedWorkers.push(worker);
-              PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
-              PThread.freeThreadData(worker.pthread);
-              worker.pthread = void 0;
+              PThread.runWithoutMainThreadQueuedCalls(function() {
+                delete PThread.pthreads[worker.pthread.threadInfoStruct];
+                PThread.unusedWorkers.push(worker);
+                PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
+                PThread.freeThreadData(worker.pthread);
+                worker.pthread = void 0;
+              });
+            }, runWithoutMainThreadQueuedCalls: function(func) {
+              GROWABLE_HEAP_I32()[__emscripten_allow_main_runtime_queued_calls >>> 2] = 0;
+              try {
+                func();
+              } finally {
+                GROWABLE_HEAP_I32()[__emscripten_allow_main_runtime_queued_calls >>> 2] = 1;
+              }
             }, receiveObjectTransfer: function(data) {
+            }, threadInit: function() {
+              for (var i in PThread.tlsInitFunctions) {
+                PThread.tlsInitFunctions[i]();
+              }
             }, loadWasmModuleToWorker: function(worker, onFinishedLoading) {
               worker.onmessage = function(e) {
                 var d = e["data"];
@@ -47876,9 +47908,17 @@
                 } else if (cmd === "alert") {
                   alert("Thread " + d["threadId"] + ": " + d["text"]);
                 } else if (cmd === "exit") {
-                  var detached = worker.pthread && Atomics.load(GROWABLE_HEAP_U32(), worker.pthread.thread + 68 >> 2);
+                  var detached = worker.pthread && Atomics.load(GROWABLE_HEAP_U32(), worker.pthread.threadInfoStruct + 64 >> 2);
                   if (detached) {
                     PThread.returnWorkerToPool(worker);
+                  }
+                } else if (cmd === "exitProcess") {
+                  try {
+                    exit(d["returnCode"]);
+                  } catch (e2) {
+                    if (e2 instanceof ExitStatus)
+                      return;
+                    throw e2;
                   }
                 } else if (cmd === "cancelDone") {
                   PThread.returnWorkerToPool(worker);
@@ -47913,10 +47953,7 @@
                 PThread.allocateUnusedWorker();
                 PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
               }
-              if (PThread.unusedWorkers.length > 0)
-                return PThread.unusedWorkers.pop();
-              else
-                return null;
+              return PThread.unusedWorkers.pop();
             }, busySpinWait: function(msecs) {
               var t = performance.now() + msecs;
               while (performance.now() < t) {
@@ -47927,10 +47964,10 @@
               stackRestore(stackTop);
             }
             Module["establishStackSpace"] = establishStackSpace;
-            function getNoExitRuntime() {
-              return noExitRuntime;
+            function invokeEntryPoint(ptr, arg) {
+              return wasmTable.get(ptr)(arg);
             }
-            Module["getNoExitRuntime"] = getNoExitRuntime;
+            Module["invokeEntryPoint"] = invokeEntryPoint;
             function ___assert_fail(condition, filename, line, func) {
               abort("Assertion failed: " + UTF8ToString(condition) + ", at: " + [filename ? UTF8ToString(filename) : "unknown filename", line, func ? UTF8ToString(func) : "unknown function"]);
             }
@@ -47944,15 +47981,13 @@
               _emscripten_get_now = function() {
                 return performance.now() - Module["__performance_now_clock_drift"];
               };
-            } else if (typeof dateNow !== "undefined") {
-              _emscripten_get_now = dateNow;
             } else
               _emscripten_get_now = function() {
                 return performance.now();
               };
             var _emscripten_get_now_is_monotonic = true;
             function setErrNo(value) {
-              GROWABLE_HEAP_I32()[___errno_location() >> 2] = value;
+              GROWABLE_HEAP_I32()[___errno_location() >>> 2] = value;
               return value;
             }
             function _clock_gettime(clk_id, tp) {
@@ -47965,49 +48000,53 @@
                 setErrNo(28);
                 return -1;
               }
-              GROWABLE_HEAP_I32()[tp >> 2] = now / 1e3 | 0;
-              GROWABLE_HEAP_I32()[tp + 4 >> 2] = now % 1e3 * 1e3 * 1e3 | 0;
+              GROWABLE_HEAP_I32()[tp >>> 2] = now / 1e3 | 0;
+              GROWABLE_HEAP_I32()[tp + 4 >>> 2] = now % 1e3 * 1e3 * 1e3 | 0;
               return 0;
             }
-            var ExceptionInfoAttrs = { DESTRUCTOR_OFFSET: 0, REFCOUNT_OFFSET: 4, TYPE_OFFSET: 8, CAUGHT_OFFSET: 12, RETHROWN_OFFSET: 13, SIZE: 16 };
             function ___cxa_allocate_exception(size) {
-              return _malloc(size + ExceptionInfoAttrs.SIZE) + ExceptionInfoAttrs.SIZE;
+              return _malloc(size + 16) + 16;
             }
             function _atexit(func, arg) {
               if (ENVIRONMENT_IS_PTHREAD)
                 return _emscripten_proxy_to_main_thread_js(1, 1, func, arg);
             }
+            function ___cxa_thread_atexit(routine, arg) {
+              PThread.threadExitHandlers.push(function() {
+                wasmTable.get(routine)(arg);
+              });
+            }
             function ExceptionInfo(excPtr) {
               this.excPtr = excPtr;
-              this.ptr = excPtr - ExceptionInfoAttrs.SIZE;
+              this.ptr = excPtr - 16;
               this.set_type = function(type) {
-                GROWABLE_HEAP_I32()[this.ptr + ExceptionInfoAttrs.TYPE_OFFSET >> 2] = type;
+                GROWABLE_HEAP_I32()[this.ptr + 4 >>> 2] = type;
               };
               this.get_type = function() {
-                return GROWABLE_HEAP_I32()[this.ptr + ExceptionInfoAttrs.TYPE_OFFSET >> 2];
+                return GROWABLE_HEAP_I32()[this.ptr + 4 >>> 2];
               };
               this.set_destructor = function(destructor) {
-                GROWABLE_HEAP_I32()[this.ptr + ExceptionInfoAttrs.DESTRUCTOR_OFFSET >> 2] = destructor;
+                GROWABLE_HEAP_I32()[this.ptr + 8 >>> 2] = destructor;
               };
               this.get_destructor = function() {
-                return GROWABLE_HEAP_I32()[this.ptr + ExceptionInfoAttrs.DESTRUCTOR_OFFSET >> 2];
+                return GROWABLE_HEAP_I32()[this.ptr + 8 >>> 2];
               };
               this.set_refcount = function(refcount) {
-                GROWABLE_HEAP_I32()[this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET >> 2] = refcount;
+                GROWABLE_HEAP_I32()[this.ptr >>> 2] = refcount;
               };
               this.set_caught = function(caught) {
                 caught = caught ? 1 : 0;
-                GROWABLE_HEAP_I8()[this.ptr + ExceptionInfoAttrs.CAUGHT_OFFSET >> 0] = caught;
+                GROWABLE_HEAP_I8()[this.ptr + 12 >>> 0] = caught;
               };
               this.get_caught = function() {
-                return GROWABLE_HEAP_I8()[this.ptr + ExceptionInfoAttrs.CAUGHT_OFFSET >> 0] != 0;
+                return GROWABLE_HEAP_I8()[this.ptr + 12 >>> 0] != 0;
               };
               this.set_rethrown = function(rethrown) {
                 rethrown = rethrown ? 1 : 0;
-                GROWABLE_HEAP_I8()[this.ptr + ExceptionInfoAttrs.RETHROWN_OFFSET >> 0] = rethrown;
+                GROWABLE_HEAP_I8()[this.ptr + 13 >>> 0] = rethrown;
               };
               this.get_rethrown = function() {
-                return GROWABLE_HEAP_I8()[this.ptr + ExceptionInfoAttrs.RETHROWN_OFFSET >> 0] != 0;
+                return GROWABLE_HEAP_I8()[this.ptr + 13 >>> 0] != 0;
               };
               this.init = function(type, destructor) {
                 this.set_type(type);
@@ -48017,10 +48056,10 @@
                 this.set_rethrown(false);
               };
               this.add_ref = function() {
-                Atomics.add(GROWABLE_HEAP_I32(), this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET >> 2, 1);
+                Atomics.add(GROWABLE_HEAP_I32(), this.ptr + 0 >> 2, 1);
               };
               this.release_ref = function() {
-                var prev = Atomics.sub(GROWABLE_HEAP_I32(), this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET >> 2, 1);
+                var prev = Atomics.sub(GROWABLE_HEAP_I32(), this.ptr + 0 >> 2, 1);
                 return prev === 1;
               };
             }
@@ -48221,12 +48260,12 @@
                 var result = null;
                 if (ENVIRONMENT_IS_NODE) {
                   var BUFSIZE = 256;
-                  var buf = Buffer.alloc ? Buffer.alloc(BUFSIZE) : new Buffer(BUFSIZE);
+                  var buf = Buffer.alloc(BUFSIZE);
                   var bytesRead = 0;
                   try {
                     bytesRead = nodeFS.readSync(process.stdin.fd, buf, 0, BUFSIZE, null);
                   } catch (e) {
-                    if (e.toString().indexOf("EOF") != -1)
+                    if (e.toString().includes("EOF"))
                       bytesRead = 0;
                     else
                       throw e;
@@ -48280,11 +48319,15 @@
                 tty.output = [];
               }
             } } };
+            function zeroMemory(address, size) {
+              GROWABLE_HEAP_U8().fill(0, address, address + size);
+            }
             function mmapAlloc(size) {
-              var alignedSize = alignMemory(size, 16384);
-              var ptr = _malloc(alignedSize);
-              while (size < alignedSize)
-                GROWABLE_HEAP_I8()[ptr + size++] = 0;
+              size = alignMemory(size, 65536);
+              var ptr = _memalign(65536, size);
+              if (!ptr)
+                return 0;
+              zeroMemory(ptr, size);
               return ptr;
             }
             var MEMFS = { ops_table: null, mount: function(mount) {
@@ -48316,16 +48359,9 @@
               node.timestamp = Date.now();
               if (parent) {
                 parent.contents[name2] = node;
+                parent.timestamp = node.timestamp;
               }
               return node;
-            }, getFileDataAsRegularArray: function(node) {
-              if (node.contents && node.contents.subarray) {
-                var arr = [];
-                for (var i = 0; i < node.usedBytes; ++i)
-                  arr.push(node.contents[i]);
-                return arr;
-              }
-              return node.contents;
             }, getFileDataAsTypedArray: function(node) {
               if (!node.contents)
                 return new Uint8Array(0);
@@ -48345,7 +48381,6 @@
               node.contents = new Uint8Array(newCapacity);
               if (node.usedBytes > 0)
                 node.contents.set(oldContents.subarray(0, node.usedBytes), 0);
-              return;
             }, resizeFileStorage: function(node, newSize) {
               newSize >>>= 0;
               if (node.usedBytes == newSize)
@@ -48353,25 +48388,14 @@
               if (newSize == 0) {
                 node.contents = null;
                 node.usedBytes = 0;
-                return;
-              }
-              if (!node.contents || node.contents.subarray) {
+              } else {
                 var oldContents = node.contents;
                 node.contents = new Uint8Array(newSize);
                 if (oldContents) {
                   node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes)));
                 }
                 node.usedBytes = newSize;
-                return;
               }
-              if (!node.contents)
-                node.contents = [];
-              if (node.contents.length > newSize)
-                node.contents.length = newSize;
-              else
-                while (node.contents.length < newSize)
-                  node.contents.push(0);
-              node.usedBytes = newSize;
             }, node_ops: { getattr: function(node) {
               var attr = {};
               attr.dev = FS.isChrdev(node.mode) ? node.id : 1;
@@ -48424,17 +48448,21 @@
                 }
               }
               delete old_node.parent.contents[old_node.name];
+              old_node.parent.timestamp = Date.now();
               old_node.name = new_name;
               new_dir.contents[new_name] = old_node;
+              new_dir.timestamp = old_node.parent.timestamp;
               old_node.parent = new_dir;
             }, unlink: function(parent, name2) {
               delete parent.contents[name2];
+              parent.timestamp = Date.now();
             }, rmdir: function(parent, name2) {
               var node = FS.lookupNode(parent, name2);
               for (var i in node.contents) {
                 throw new FS.ErrnoError(55);
               }
               delete parent.contents[name2];
+              parent.timestamp = Date.now();
             }, readdir: function(node) {
               var entries = [".", ".."];
               for (var key2 in node.contents) {
@@ -48514,7 +48542,9 @@
               MEMFS.expandFileStorage(stream.node, offset + length);
               stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
             }, mmap: function(stream, address, length, position, prot, flags) {
-              assert(address === 0);
+              if (address !== 0) {
+                throw new FS.ErrnoError(28);
+              }
               if (!FS.isFile(stream.node.mode)) {
                 throw new FS.ErrnoError(43);
               }
@@ -48538,7 +48568,7 @@
                   throw new FS.ErrnoError(48);
                 }
                 ptr >>>= 0;
-                GROWABLE_HEAP_I8().set(contents, ptr);
+                GROWABLE_HEAP_I8().set(contents, ptr >>> 0);
               }
               return { ptr, allocated };
             }, msync: function(stream, buffer2, offset, length, mmapFlags) {
@@ -48551,6 +48581,23 @@
               MEMFS.stream_ops.write(stream, buffer2, 0, length, offset, false);
               return 0;
             } } };
+            function asyncLoad(url, onload, onerror, noRunDep) {
+              var dep = !noRunDep ? getUniqueRunDependency("al " + url) : "";
+              readAsync(url, function(arrayBuffer) {
+                assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
+                onload(new Uint8Array(arrayBuffer));
+                if (dep)
+                  removeRunDependency();
+              }, function(event) {
+                if (onerror) {
+                  onerror();
+                } else {
+                  throw 'Loading data file "' + url + '" failed.';
+                }
+              });
+              if (dep)
+                addRunDependency();
+            }
             var FS = { root: null, mounts: [], devices: {}, streams: [], nextInode: 1, nameTable: null, currentPath: "/", initialized: false, ignorePermissions: true, trackingDelegate: {}, tracking: { openFlags: { READ: 1, WRITE: 2 } }, ErrnoError: null, genericErrors: {}, filesystems: null, syncFSRequests: 0, lookupPath: function(path, opts) {
               path = PATH_FS.resolve(FS.cwd(), path);
               opts = opts || {};
@@ -48685,11 +48732,11 @@
               if (FS.ignorePermissions) {
                 return 0;
               }
-              if (perms.indexOf("r") !== -1 && !(node.mode & 292)) {
+              if (perms.includes("r") && !(node.mode & 292)) {
                 return 2;
-              } else if (perms.indexOf("w") !== -1 && !(node.mode & 146)) {
+              } else if (perms.includes("w") && !(node.mode & 146)) {
                 return 2;
-              } else if (perms.indexOf("x") !== -1 && !(node.mode & 73)) {
+              } else if (perms.includes("x") && !(node.mode & 73)) {
                 return 2;
               }
               return 0;
@@ -48883,7 +48930,7 @@
                 var current = FS.nameTable[hash];
                 while (current) {
                   var next = current.name_next;
-                  if (mounts.indexOf(current.mount) !== -1) {
+                  if (mounts.includes(current.mount)) {
                     FS.destroyNode(current);
                   }
                   current = next;
@@ -49486,10 +49533,10 @@
               FS.mkdir("/dev/shm/tmp");
             }, createSpecialDirectories: function() {
               FS.mkdir("/proc");
-              FS.mkdir("/proc/self");
+              var proc_self = FS.mkdir("/proc/self");
               FS.mkdir("/proc/self/fd");
               FS.mount({ mount: function() {
-                var node = FS.createNode("/proc/self", "fd", 16384 | 511, 73);
+                var node = FS.createNode(proc_self, "fd", 16384 | 511, 73);
                 node.node_ops = { lookup: function(parent, name2) {
                   var fd = +name2;
                   var stream = FS.getStream(fd);
@@ -49865,7 +49912,7 @@
               }
               addRunDependency();
               if (typeof url == "string") {
-                Browser.asyncLoad(url, function(byteArray) {
+                asyncLoad(url, function(byteArray) {
                   processData(byteArray);
                 }, onerror);
               } else {
@@ -49967,20 +50014,26 @@
               };
               openRequest.onerror = onerror;
             } };
-            var SYSCALLS = { mappings: {}, DEFAULT_POLLMASK: 5, umask: 511, calculateAt: function(dirfd, path) {
-              if (path[0] !== "/") {
-                var dir;
-                if (dirfd === -100) {
-                  dir = FS.cwd();
-                } else {
-                  var dirstream = FS.getStream(dirfd);
-                  if (!dirstream)
-                    throw new FS.ErrnoError(8);
-                  dir = dirstream.path;
-                }
-                path = PATH.join2(dir, path);
+            var SYSCALLS = { mappings: {}, DEFAULT_POLLMASK: 5, umask: 511, calculateAt: function(dirfd, path, allowEmpty) {
+              if (path[0] === "/") {
+                return path;
               }
-              return path;
+              var dir;
+              if (dirfd === -100) {
+                dir = FS.cwd();
+              } else {
+                var dirstream = FS.getStream(dirfd);
+                if (!dirstream)
+                  throw new FS.ErrnoError(8);
+                dir = dirstream.path;
+              }
+              if (path.length == 0) {
+                if (!allowEmpty) {
+                  throw new FS.ErrnoError(44);
+                }
+                return dir;
+              }
+              return PATH.join2(dir, path);
             }, doStat: function(func, path, buf) {
               try {
                 var stat = func(path);
@@ -49990,25 +50043,25 @@
                 }
                 throw e;
               }
-              GROWABLE_HEAP_I32()[buf >> 2] = stat.dev;
-              GROWABLE_HEAP_I32()[buf + 4 >> 2] = 0;
-              GROWABLE_HEAP_I32()[buf + 8 >> 2] = stat.ino;
-              GROWABLE_HEAP_I32()[buf + 12 >> 2] = stat.mode;
-              GROWABLE_HEAP_I32()[buf + 16 >> 2] = stat.nlink;
-              GROWABLE_HEAP_I32()[buf + 20 >> 2] = stat.uid;
-              GROWABLE_HEAP_I32()[buf + 24 >> 2] = stat.gid;
-              GROWABLE_HEAP_I32()[buf + 28 >> 2] = stat.rdev;
-              GROWABLE_HEAP_I32()[buf + 32 >> 2] = 0;
-              tempI64 = [stat.size >>> 0, (tempDouble = stat.size, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0)], GROWABLE_HEAP_I32()[buf + 40 >> 2] = tempI64[0], GROWABLE_HEAP_I32()[buf + 44 >> 2] = tempI64[1];
-              GROWABLE_HEAP_I32()[buf + 48 >> 2] = 4096;
-              GROWABLE_HEAP_I32()[buf + 52 >> 2] = stat.blocks;
-              GROWABLE_HEAP_I32()[buf + 56 >> 2] = stat.atime.getTime() / 1e3 | 0;
-              GROWABLE_HEAP_I32()[buf + 60 >> 2] = 0;
-              GROWABLE_HEAP_I32()[buf + 64 >> 2] = stat.mtime.getTime() / 1e3 | 0;
-              GROWABLE_HEAP_I32()[buf + 68 >> 2] = 0;
-              GROWABLE_HEAP_I32()[buf + 72 >> 2] = stat.ctime.getTime() / 1e3 | 0;
-              GROWABLE_HEAP_I32()[buf + 76 >> 2] = 0;
-              tempI64 = [stat.ino >>> 0, (tempDouble = stat.ino, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0)], GROWABLE_HEAP_I32()[buf + 80 >> 2] = tempI64[0], GROWABLE_HEAP_I32()[buf + 84 >> 2] = tempI64[1];
+              GROWABLE_HEAP_I32()[buf >>> 2] = stat.dev;
+              GROWABLE_HEAP_I32()[buf + 4 >>> 2] = 0;
+              GROWABLE_HEAP_I32()[buf + 8 >>> 2] = stat.ino;
+              GROWABLE_HEAP_I32()[buf + 12 >>> 2] = stat.mode;
+              GROWABLE_HEAP_I32()[buf + 16 >>> 2] = stat.nlink;
+              GROWABLE_HEAP_I32()[buf + 20 >>> 2] = stat.uid;
+              GROWABLE_HEAP_I32()[buf + 24 >>> 2] = stat.gid;
+              GROWABLE_HEAP_I32()[buf + 28 >>> 2] = stat.rdev;
+              GROWABLE_HEAP_I32()[buf + 32 >>> 2] = 0;
+              tempI64 = [stat.size >>> 0, (tempDouble = stat.size, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0)], GROWABLE_HEAP_I32()[buf + 40 >>> 2] = tempI64[0], GROWABLE_HEAP_I32()[buf + 44 >>> 2] = tempI64[1];
+              GROWABLE_HEAP_I32()[buf + 48 >>> 2] = 4096;
+              GROWABLE_HEAP_I32()[buf + 52 >>> 2] = stat.blocks;
+              GROWABLE_HEAP_I32()[buf + 56 >>> 2] = stat.atime.getTime() / 1e3 | 0;
+              GROWABLE_HEAP_I32()[buf + 60 >>> 2] = 0;
+              GROWABLE_HEAP_I32()[buf + 64 >>> 2] = stat.mtime.getTime() / 1e3 | 0;
+              GROWABLE_HEAP_I32()[buf + 68 >>> 2] = 0;
+              GROWABLE_HEAP_I32()[buf + 72 >>> 2] = stat.ctime.getTime() / 1e3 | 0;
+              GROWABLE_HEAP_I32()[buf + 76 >>> 2] = 0;
+              tempI64 = [stat.ino >>> 0, (tempDouble = stat.ino, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0)], GROWABLE_HEAP_I32()[buf + 80 >>> 2] = tempI64[0], GROWABLE_HEAP_I32()[buf + 84 >>> 2] = tempI64[1];
               return 0;
             }, doMsync: function(addr, stream, len, flags, offset) {
               var buffer2 = GROWABLE_HEAP_U8().slice(addr, addr + len);
@@ -50037,9 +50090,9 @@
                 return -28;
               var ret = FS.readlink(path);
               var len = Math.min(bufsize, lengthBytesUTF8(ret));
-              var endChar = GROWABLE_HEAP_I8()[buf + len];
+              var endChar = GROWABLE_HEAP_I8()[buf + len >>> 0];
               stringToUTF8(ret, buf, bufsize + 1);
-              GROWABLE_HEAP_I8()[buf + len] = endChar;
+              GROWABLE_HEAP_I8()[buf + len >>> 0] = endChar;
               return len;
             }, doAccess: function(path, amode) {
               if (amode & ~7) {
@@ -50070,8 +50123,8 @@
             }, doReadv: function(stream, iov, iovcnt, offset) {
               var ret = 0;
               for (var i = 0; i < iovcnt; i++) {
-                var ptr = GROWABLE_HEAP_I32()[iov + i * 8 >> 2];
-                var len = GROWABLE_HEAP_I32()[iov + (i * 8 + 4) >> 2];
+                var ptr = GROWABLE_HEAP_I32()[iov + i * 8 >>> 2];
+                var len = GROWABLE_HEAP_I32()[iov + (i * 8 + 4) >>> 2];
                 var curr = FS.read(stream, GROWABLE_HEAP_I8(), ptr, len, offset);
                 if (curr < 0)
                   return -1;
@@ -50083,8 +50136,8 @@
             }, doWritev: function(stream, iov, iovcnt, offset) {
               var ret = 0;
               for (var i = 0; i < iovcnt; i++) {
-                var ptr = GROWABLE_HEAP_I32()[iov + i * 8 >> 2];
-                var len = GROWABLE_HEAP_I32()[iov + (i * 8 + 4) >> 2];
+                var ptr = GROWABLE_HEAP_I32()[iov + i * 8 >>> 2];
+                var len = GROWABLE_HEAP_I32()[iov + (i * 8 + 4) >>> 2];
                 var curr = FS.write(stream, GROWABLE_HEAP_I8(), ptr, len, offset);
                 if (curr < 0)
                   return -1;
@@ -50093,7 +50146,7 @@
               return ret;
             }, varargs: void 0, get: function() {
               SYSCALLS.varargs += 4;
-              var ret = GROWABLE_HEAP_I32()[SYSCALLS.varargs - 4 >> 2];
+              var ret = GROWABLE_HEAP_I32()[SYSCALLS.varargs - 4 >>> 2];
               return ret;
             }, getStr: function(ptr) {
               var ret = UTF8ToString(ptr);
@@ -50106,9 +50159,60 @@
             }, get64: function(low, high) {
               return low;
             } };
+            function ___sys_fcntl64(fd, cmd, varargs) {
+              if (ENVIRONMENT_IS_PTHREAD)
+                return _emscripten_proxy_to_main_thread_js(2, 1, fd, cmd, varargs);
+              SYSCALLS.varargs = varargs;
+              try {
+                var stream = SYSCALLS.getStreamFromFD(fd);
+                switch (cmd) {
+                  case 0: {
+                    var arg = SYSCALLS.get();
+                    if (arg < 0) {
+                      return -28;
+                    }
+                    var newStream;
+                    newStream = FS.open(stream.path, stream.flags, 0, arg);
+                    return newStream.fd;
+                  }
+                  case 1:
+                  case 2:
+                    return 0;
+                  case 3:
+                    return stream.flags;
+                  case 4: {
+                    var arg = SYSCALLS.get();
+                    stream.flags |= arg;
+                    return 0;
+                  }
+                  case 12: {
+                    var arg = SYSCALLS.get();
+                    var offset = 0;
+                    GROWABLE_HEAP_I16()[arg + offset >>> 1] = 2;
+                    return 0;
+                  }
+                  case 13:
+                  case 14:
+                    return 0;
+                  case 16:
+                  case 8:
+                    return -28;
+                  case 9:
+                    setErrNo(28);
+                    return -1;
+                  default: {
+                    return -28;
+                  }
+                }
+              } catch (e) {
+                if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
+                  abort(e);
+                return -e.errno;
+              }
+            }
             function ___sys_ioctl(fd, op, varargs) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(2, 1, fd, op, varargs);
+                return _emscripten_proxy_to_main_thread_js(3, 1, fd, op, varargs);
               SYSCALLS.varargs = varargs;
               try {
                 var stream = SYSCALLS.getStreamFromFD(fd);
@@ -50133,7 +50237,7 @@
                     if (!stream.tty)
                       return -59;
                     var argp = SYSCALLS.get();
-                    GROWABLE_HEAP_I32()[argp >> 2] = 0;
+                    GROWABLE_HEAP_I32()[argp >>> 2] = 0;
                     return 0;
                   }
                   case 21520: {
@@ -50166,11 +50270,11 @@
             }
             function ___sys_open(path, flags, varargs) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(3, 1, path, flags, varargs);
+                return _emscripten_proxy_to_main_thread_js(4, 1, path, flags, varargs);
               SYSCALLS.varargs = varargs;
               try {
                 var pathname = SYSCALLS.getStr(path);
-                var mode = SYSCALLS.get();
+                var mode = varargs ? SYSCALLS.get() : 0;
                 var stream = FS.open(pathname, flags, mode);
                 return stream.fd;
               } catch (e) {
@@ -50188,7 +50292,7 @@
               }
             }
             function simpleReadValueFromPointer(pointer) {
-              return this["fromWireType"](GROWABLE_HEAP_U32()[pointer >> 2]);
+              return this["fromWireType"](GROWABLE_HEAP_U32()[pointer >>> 2]);
             }
             var awaitingDependencies = {};
             var registeredTypes = {};
@@ -50377,6 +50481,8 @@
                 }, "argPackAdvance": 8, "readValueFromPointer": simpleReadValueFromPointer, destructorFunction: rawDestructor }];
               });
             }
+            function __embind_register_bigint(primitiveType, name2, size, minRange, maxRange) {
+            }
             function getShiftFromSize(size) {
               switch (size) {
                 case 1:
@@ -50402,8 +50508,8 @@
             function readLatin1String(ptr) {
               var ret = "";
               var c = ptr;
-              while (GROWABLE_HEAP_U8()[c]) {
-                ret += embind_charCodes[GROWABLE_HEAP_U8()[c++]];
+              while (GROWABLE_HEAP_U8()[c >>> 0]) {
+                ret += embind_charCodes[GROWABLE_HEAP_U8()[c++ >>> 0]];
               }
               return ret;
             }
@@ -50913,8 +51019,17 @@
                 Module[name2].argCount = numArguments;
               }
             }
+            function dynCallLegacy(sig, ptr, args) {
+              var f = Module["dynCall_" + sig];
+              return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
+            }
+            function dynCall(sig, ptr, args) {
+              if (sig.includes("j")) {
+                return dynCallLegacy(sig, ptr, args);
+              }
+              return wasmTable.get(ptr).apply(null, args);
+            }
             function getDynCaller(sig, ptr) {
-              assert(sig.indexOf("j") >= 0, "getDynCaller should only be called with i64 sigs");
               var argCache = [];
               return function() {
                 argCache.length = arguments.length;
@@ -50927,7 +51042,7 @@
             function embind__requireFunction(signature, rawFunction) {
               signature = readLatin1String(signature);
               function makeDynCaller() {
-                if (signature.indexOf("j") != -1) {
+                if (signature.includes("j")) {
                   return getDynCaller(signature, rawFunction);
                 }
                 return wasmTable.get(rawFunction);
@@ -51016,7 +51131,7 @@
             function heap32VectorToArray(count, firstElement) {
               var array = [];
               for (var i = 0; i < count; i++) {
-                array.push(GROWABLE_HEAP_I32()[(firstElement >> 2) + i]);
+                array.push(GROWABLE_HEAP_I32()[(firstElement >> 2) + i >>> 0]);
               }
               return array;
             }
@@ -51134,6 +51249,9 @@
               whenDependentTypesAreResolved([], [rawClassType], function(classType) {
                 classType = classType[0];
                 var humanName = classType.name + "." + methodName;
+                if (methodName.startsWith("@@")) {
+                  methodName = Symbol[methodName.substring(2)];
+                }
                 if (isPureVirtual) {
                   classType.registeredClass.pureVirtualFunctions.push(methodName);
                 }
@@ -51288,11 +51406,11 @@
               switch (shift) {
                 case 2:
                   return function(pointer) {
-                    return this["fromWireType"](GROWABLE_HEAP_F32()[pointer >> 2]);
+                    return this["fromWireType"](GROWABLE_HEAP_F32()[pointer >>> 2]);
                   };
                 case 3:
                   return function(pointer) {
-                    return this["fromWireType"](GROWABLE_HEAP_F64()[pointer >> 3]);
+                    return this["fromWireType"](GROWABLE_HEAP_F64()[pointer >>> 3]);
                   };
                 default:
                   throw new TypeError("Unknown float type: " + name2);
@@ -51327,21 +51445,21 @@
               switch (shift) {
                 case 0:
                   return signed ? function readS8FromPointer(pointer) {
-                    return GROWABLE_HEAP_I8()[pointer];
+                    return GROWABLE_HEAP_I8()[pointer >>> 0];
                   } : function readU8FromPointer(pointer) {
-                    return GROWABLE_HEAP_U8()[pointer];
+                    return GROWABLE_HEAP_U8()[pointer >>> 0];
                   };
                 case 1:
                   return signed ? function readS16FromPointer(pointer) {
-                    return GROWABLE_HEAP_I16()[pointer >> 1];
+                    return GROWABLE_HEAP_I16()[pointer >>> 1];
                   } : function readU16FromPointer(pointer) {
-                    return GROWABLE_HEAP_U16()[pointer >> 1];
+                    return GROWABLE_HEAP_U16()[pointer >>> 1];
                   };
                 case 2:
                   return signed ? function readS32FromPointer(pointer) {
-                    return GROWABLE_HEAP_I32()[pointer >> 2];
+                    return GROWABLE_HEAP_I32()[pointer >>> 2];
                   } : function readU32FromPointer(pointer) {
-                    return GROWABLE_HEAP_U32()[pointer >> 2];
+                    return GROWABLE_HEAP_U32()[pointer >>> 2];
                   };
                 default:
                   throw new TypeError("Unknown integer type: " + name2);
@@ -51362,7 +51480,7 @@
                   return value << bitshift >>> bitshift;
                 };
               }
-              var isUnsignedType = name2.indexOf("unsigned") != -1;
+              var isUnsignedType = name2.includes("unsigned");
               registerType(primitiveType, { name: name2, "fromWireType": fromWireType, "toWireType": function(destructors, value) {
                 if (typeof value !== "number" && typeof value !== "boolean") {
                   throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
@@ -51390,13 +51508,13 @@
               name2 = readLatin1String(name2);
               var stdStringIsUTF8 = name2 === "std::string";
               registerType(rawType, { name: name2, "fromWireType": function(value) {
-                var length = GROWABLE_HEAP_U32()[value >> 2];
+                var length = GROWABLE_HEAP_U32()[value >>> 2];
                 var str;
                 if (stdStringIsUTF8) {
                   var decodeStartPtr = value + 4;
                   for (var i = 0; i <= length; ++i) {
                     var currentBytePtr = value + 4 + i;
-                    if (i == length || GROWABLE_HEAP_U8()[currentBytePtr] == 0) {
+                    if (i == length || GROWABLE_HEAP_U8()[currentBytePtr >>> 0] == 0) {
                       var maxRead = currentBytePtr - decodeStartPtr;
                       var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
                       if (str === void 0) {
@@ -51411,7 +51529,7 @@
                 } else {
                   var a = new Array(length);
                   for (var i = 0; i < length; ++i) {
-                    a[i] = String.fromCharCode(GROWABLE_HEAP_U8()[value + 4 + i]);
+                    a[i] = String.fromCharCode(GROWABLE_HEAP_U8()[value + 4 + i >>> 0]);
                   }
                   str = a.join("");
                 }
@@ -51438,7 +51556,7 @@
                 var length = getLength();
                 var ptr = _malloc(4 + length + 1);
                 ptr >>>= 0;
-                GROWABLE_HEAP_U32()[ptr >> 2] = length;
+                GROWABLE_HEAP_U32()[ptr >>> 2] = length;
                 if (stdStringIsUTF8 && valueIsOfTypeString) {
                   stringToUTF8(value, ptr + 4, length + 1);
                 } else {
@@ -51449,11 +51567,11 @@
                         _free(ptr);
                         throwBindingError("String has UTF-16 code units that do not fit in 8 bits");
                       }
-                      GROWABLE_HEAP_U8()[ptr + 4 + i] = charCode;
+                      GROWABLE_HEAP_U8()[ptr + 4 + i >>> 0] = charCode;
                     }
                   } else {
                     for (var i = 0; i < length; ++i) {
-                      GROWABLE_HEAP_U8()[ptr + 4 + i] = value[i];
+                      GROWABLE_HEAP_U8()[ptr + 4 + i >>> 0] = value[i];
                     }
                   }
                 }
@@ -51486,7 +51604,7 @@
                 shift = 2;
               }
               registerType(rawType, { name: name2, "fromWireType": function(value) {
-                var length = GROWABLE_HEAP_U32()[value >> 2];
+                var length = GROWABLE_HEAP_U32()[value >>> 2];
                 var HEAP = getHeap();
                 var str;
                 var decodeStartPtr = value + 4;
@@ -51513,7 +51631,7 @@
                 var length = lengthBytesUTF(value);
                 var ptr = _malloc(4 + length + charSize);
                 ptr >>>= 0;
-                GROWABLE_HEAP_U32()[ptr >> 2] = length >> shift;
+                GROWABLE_HEAP_U32()[ptr >>> 2] = length >> shift;
                 encodeString(value, ptr + 4, length + charSize);
                 if (destructors !== null) {
                   destructors.push(_free, ptr);
@@ -51569,13 +51687,13 @@
               returnType = requireRegisteredType(returnType, "emval::as");
               var destructors = [];
               var rd = __emval_register(destructors);
-              GROWABLE_HEAP_I32()[destructorsRef >> 2] = rd;
+              GROWABLE_HEAP_I32()[destructorsRef >>> 2] = rd;
               return returnType["toWireType"](destructors, handle);
             }
             function __emval_lookupTypes(argCount, argTypes) {
               var a = new Array(argCount);
               for (var i = 0; i < argCount; ++i) {
-                a[i] = requireRegisteredType(GROWABLE_HEAP_I32()[(argTypes >> 2) + i], "parameter " + i);
+                a[i] = requireRegisteredType(GROWABLE_HEAP_I32()[(argTypes >> 2) + i >>> 0], "parameter " + i);
               }
               return a;
             }
@@ -51663,6 +51781,20 @@
             function _abort() {
               abort();
             }
+            var readAsmConstArgsArray = [];
+            function readAsmConstArgs(sigPtr, buf) {
+              readAsmConstArgsArray.length = 0;
+              var ch;
+              buf >>= 2;
+              while (ch = GROWABLE_HEAP_U8()[sigPtr++ >>> 0]) {
+                var double = ch < 105;
+                if (double && buf & 1)
+                  buf++;
+                readAsmConstArgsArray.push(double ? GROWABLE_HEAP_F64()[buf++ >>> 1] : GROWABLE_HEAP_I32()[buf >>> 0]);
+                ++buf;
+              }
+              return readAsmConstArgsArray;
+            }
             function _emscripten_asm_const_int(code, sigPtr, argbuf) {
               var args = readAsmConstArgs(sigPtr, argbuf);
               return ASM_CONSTS[code].apply(null, args);
@@ -51694,14 +51826,14 @@
                 }
                 var tNow = performance.now();
                 var tEnd = tNow + timeout;
-                var lastAddr = Atomics.exchange(GROWABLE_HEAP_I32(), PThread.mainThreadFutex >> 2, addr);
+                var lastAddr = Atomics.exchange(GROWABLE_HEAP_I32(), __emscripten_main_thread_futex >> 2, addr);
                 while (1) {
                   tNow = performance.now();
                   if (tNow > tEnd) {
-                    lastAddr = Atomics.exchange(GROWABLE_HEAP_I32(), PThread.mainThreadFutex >> 2, 0);
+                    lastAddr = Atomics.exchange(GROWABLE_HEAP_I32(), __emscripten_main_thread_futex >> 2, 0);
                     return -73;
                   }
-                  lastAddr = Atomics.exchange(GROWABLE_HEAP_I32(), PThread.mainThreadFutex >> 2, 0);
+                  lastAddr = Atomics.exchange(GROWABLE_HEAP_I32(), __emscripten_main_thread_futex >> 2, 0);
                   if (lastAddr == 0) {
                     break;
                   }
@@ -51709,59 +51841,38 @@
                   if (Atomics.load(GROWABLE_HEAP_I32(), addr >> 2) != val) {
                     return -6;
                   }
-                  lastAddr = Atomics.exchange(GROWABLE_HEAP_I32(), PThread.mainThreadFutex >> 2, addr);
+                  lastAddr = Atomics.exchange(GROWABLE_HEAP_I32(), __emscripten_main_thread_futex >> 2, addr);
                 }
                 return 0;
               }
             }
-            function _emscripten_is_main_browser_thread() {
-              return __pthread_is_main_browser_thread | 0;
-            }
-            function _emscripten_is_main_runtime_thread() {
-              return __pthread_is_main_runtime_thread | 0;
-            }
             function _emscripten_memcpy_big(dest, src, num) {
-              GROWABLE_HEAP_U8().copyWithin(dest, src, src + num);
+              GROWABLE_HEAP_U8().copyWithin(dest >>> 0, src >>> 0, src + num >>> 0);
             }
             function _emscripten_proxy_to_main_thread_js(index, sync) {
               var numCallArgs = arguments.length - 2;
               var stack = stackSave();
-              var args = stackAlloc(numCallArgs * 8);
+              var serializedNumCallArgs = numCallArgs;
+              var args = stackAlloc(serializedNumCallArgs * 8);
               var b = args >> 3;
               for (var i = 0; i < numCallArgs; i++) {
-                GROWABLE_HEAP_F64()[b + i] = arguments[2 + i];
+                var arg = arguments[2 + i];
+                GROWABLE_HEAP_F64()[b + i >>> 0] = arg;
               }
-              var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, args, sync);
+              var ret = _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
               stackRestore(stack);
               return ret;
             }
             var _emscripten_receive_on_main_thread_js_callArgs = [];
-            var readAsmConstArgsArray = [];
-            function readAsmConstArgs(sigPtr, buf) {
-              readAsmConstArgsArray.length = 0;
-              var ch;
-              buf >>= 2;
-              while (ch = GROWABLE_HEAP_U8()[sigPtr++]) {
-                var double = ch < 105;
-                if (double && buf & 1)
-                  buf++;
-                readAsmConstArgsArray.push(double ? GROWABLE_HEAP_F64()[buf++ >> 1] : GROWABLE_HEAP_I32()[buf]);
-                ++buf;
-              }
-              return readAsmConstArgsArray;
-            }
             function _emscripten_receive_on_main_thread_js(index, numCallArgs, args) {
               _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
               var b = args >> 3;
               for (var i = 0; i < numCallArgs; i++) {
-                _emscripten_receive_on_main_thread_js_callArgs[i] = GROWABLE_HEAP_F64()[b + i];
+                _emscripten_receive_on_main_thread_js_callArgs[i] = GROWABLE_HEAP_F64()[b + i >>> 0];
               }
               var isEmAsmConst = index < 0;
               var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
               return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
-            }
-            function _emscripten_get_heap_size() {
-              return GROWABLE_HEAP_U8().length;
             }
             function emscripten_realloc_buffer(size) {
               try {
@@ -51772,20 +51883,19 @@
               }
             }
             function _emscripten_resize_heap(requestedSize) {
+              var oldSize = GROWABLE_HEAP_U8().length;
               requestedSize = requestedSize >>> 0;
-              var oldSize = _emscripten_get_heap_size();
               if (requestedSize <= oldSize) {
                 return false;
               }
-              var maxHeapSize = 4294967296;
+              var maxHeapSize = 4294901760;
               if (requestedSize > maxHeapSize) {
                 return false;
               }
-              var minHeapSize = 16777216;
               for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
                 var overGrownHeapSize = oldSize * (1 + 0.2 / cutDown);
                 overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 100663296);
-                var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), 65536));
+                var newSize = Math.min(maxHeapSize, alignUp(Math.max(requestedSize, overGrownHeapSize), 65536));
                 var replacement = emscripten_realloc_buffer(newSize);
                 if (replacement) {
                   return true;
@@ -51876,9 +51986,9 @@
             }, queueEventHandlerOnThread_iiii: function(targetThread, eventHandlerFunc, eventTypeId, eventData, userData) {
               var stackTop = stackSave();
               var varargs = stackAlloc(12);
-              GROWABLE_HEAP_I32()[varargs >> 2] = eventTypeId;
-              GROWABLE_HEAP_I32()[varargs + 4 >> 2] = eventData;
-              GROWABLE_HEAP_I32()[varargs + 8 >> 2] = userData;
+              GROWABLE_HEAP_I32()[varargs >>> 2] = eventTypeId;
+              GROWABLE_HEAP_I32()[varargs + 4 >>> 2] = eventData;
+              GROWABLE_HEAP_I32()[varargs + 8 >>> 2] = userData;
               __emscripten_call_on_thread(0, targetThread, 637534208, eventHandlerFunc, eventData, varargs);
               stackRestore(stackTop);
             }, getTargetThreadForEventCallback: function(targetThread) {
@@ -51914,9 +52024,9 @@
               if (targetCanvas) {
                 targetCanvasPtr = stringToNewUTF8(targetCanvas);
               }
-              GROWABLE_HEAP_I32()[varargs >> 2] = targetCanvasPtr;
-              GROWABLE_HEAP_I32()[varargs + 4 >> 2] = width;
-              GROWABLE_HEAP_I32()[varargs + 8 >> 2] = height;
+              GROWABLE_HEAP_I32()[varargs >>> 2] = targetCanvasPtr;
+              GROWABLE_HEAP_I32()[varargs + 4 >>> 2] = width;
+              GROWABLE_HEAP_I32()[varargs + 8 >>> 2] = height;
               __emscripten_call_on_thread(0, targetThread, 657457152, 0, targetCanvasPtr, varargs);
               stackRestore(stackTop);
             }
@@ -51941,8 +52051,8 @@
               if (!canvas)
                 return -4;
               if (canvas.canvasSharedPtr) {
-                GROWABLE_HEAP_I32()[canvas.canvasSharedPtr >> 2] = width;
-                GROWABLE_HEAP_I32()[canvas.canvasSharedPtr + 4 >> 2] = height;
+                GROWABLE_HEAP_I32()[canvas.canvasSharedPtr >>> 2] = width;
+                GROWABLE_HEAP_I32()[canvas.canvasSharedPtr + 4 >>> 2] = height;
               }
               if (canvas.offscreenCanvas || !canvas.controlTransferredOffscreen) {
                 if (canvas.offscreenCanvas)
@@ -51958,7 +52068,7 @@
                   canvas.GLctxObject.GLctx.viewport(0, 0, width, height);
                 }
               } else if (canvas.canvasSharedPtr) {
-                var targetThread = GROWABLE_HEAP_I32()[canvas.canvasSharedPtr + 8 >> 2];
+                var targetThread = GROWABLE_HEAP_I32()[canvas.canvasSharedPtr + 8 >>> 2];
                 _emscripten_set_offscreencanvas_size_on_target_thread(targetThread, target, width, height);
                 return 1;
               } else {
@@ -51968,7 +52078,7 @@
             }
             function _emscripten_set_canvas_element_size_main_thread(target, width, height) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(4, 1, target, width, height);
+                return _emscripten_proxy_to_main_thread_js(5, 1, target, width, height);
               return _emscripten_set_canvas_element_size_calling_thread(target, width, height);
             }
             function _emscripten_set_canvas_element_size(target, width, height) {
@@ -52026,7 +52136,7 @@
             function __webgl_enable_WEBGL_multi_draw(ctx) {
               return !!(ctx.multiDrawWebgl = ctx.getExtension("WEBGL_multi_draw"));
             }
-            var GL = { counter: 1, buffers: [], programs: [], framebuffers: [], renderbuffers: [], textures: [], uniforms: [], shaders: [], vaos: [], contexts: {}, offscreenCanvases: {}, timerQueriesEXT: [], programInfos: {}, stringCache: {}, unpackAlignment: 4, recordError: function recordError(errorCode) {
+            var GL = { counter: 1, buffers: [], programs: [], framebuffers: [], renderbuffers: [], textures: [], shaders: [], vaos: [], contexts: {}, offscreenCanvases: {}, queries: [], stringCache: {}, unpackAlignment: 4, recordError: function recordError(errorCode) {
               if (!GL.lastError) {
                 GL.lastError = errorCode;
               }
@@ -52039,11 +52149,18 @@
             }, getSource: function(shader, count, string, length) {
               var source = "";
               for (var i = 0; i < count; ++i) {
-                var len = length ? GROWABLE_HEAP_I32()[length + i * 4 >> 2] : -1;
-                source += UTF8ToString(GROWABLE_HEAP_I32()[string + i * 4 >> 2], len < 0 ? void 0 : len);
+                var len = length ? GROWABLE_HEAP_I32()[length + i * 4 >>> 2] : -1;
+                source += UTF8ToString(GROWABLE_HEAP_I32()[string + i * 4 >>> 2], len < 0 ? void 0 : len);
               }
               return source;
             }, createContext: function(canvas, webGLContextAttributes) {
+              if (!canvas.getContextSafariWebGL2Fixed) {
+                canvas.getContextSafariWebGL2Fixed = canvas.getContext;
+                canvas.getContext = function(ver, attrs) {
+                  var gl = canvas.getContextSafariWebGL2Fixed(ver, attrs);
+                  return ver == "webgl" == gl instanceof WebGLRenderingContext ? gl : null;
+                };
+              }
               var ctx = canvas.getContext("webgl", webGLContextAttributes);
               if (!ctx)
                 return 0;
@@ -52051,7 +52168,7 @@
               return handle;
             }, registerContext: function(ctx, webGLContextAttributes) {
               var handle = _malloc(8);
-              GROWABLE_HEAP_I32()[handle + 4 >> 2] = _pthread_self();
+              GROWABLE_HEAP_I32()[handle + 4 >>> 2] = _pthread_self();
               var context = { handle, attributes: webGLContextAttributes, version: webGLContextAttributes.majorVersion, GLctx: ctx };
               if (ctx.canvas)
                 ctx.canvas.GLctxObject = context;
@@ -52085,46 +52202,22 @@
               __webgl_enable_ANGLE_instanced_arrays(GLctx2);
               __webgl_enable_OES_vertex_array_object(GLctx2);
               __webgl_enable_WEBGL_draw_buffers(GLctx2);
-              GLctx2.disjointTimerQueryExt = GLctx2.getExtension("EXT_disjoint_timer_query");
+              {
+                GLctx2.disjointTimerQueryExt = GLctx2.getExtension("EXT_disjoint_timer_query");
+              }
               __webgl_enable_WEBGL_multi_draw(GLctx2);
-              var automaticallyEnabledExtensions = ["OES_texture_float", "OES_texture_half_float", "OES_standard_derivatives", "OES_vertex_array_object", "WEBGL_compressed_texture_s3tc", "WEBGL_depth_texture", "OES_element_index_uint", "EXT_texture_filter_anisotropic", "EXT_frag_depth", "WEBGL_draw_buffers", "ANGLE_instanced_arrays", "OES_texture_float_linear", "OES_texture_half_float_linear", "EXT_blend_minmax", "EXT_shader_texture_lod", "EXT_texture_norm16", "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float", "EXT_sRGB", "WEBGL_compressed_texture_etc1", "EXT_disjoint_timer_query", "WEBGL_compressed_texture_etc", "WEBGL_compressed_texture_astc", "EXT_color_buffer_float", "WEBGL_compressed_texture_s3tc_srgb", "EXT_disjoint_timer_query_webgl2", "WEBKIT_WEBGL_compressed_texture_pvrtc"];
               var exts = GLctx2.getSupportedExtensions() || [];
               exts.forEach(function(ext) {
-                if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
+                if (!ext.includes("lose_context") && !ext.includes("debug")) {
                   GLctx2.getExtension(ext);
                 }
               });
-            }, populateUniformTable: function(program) {
-              var p = GL.programs[program];
-              var ptable = GL.programInfos[program] = { uniforms: {}, maxUniformLength: 0, maxAttributeLength: -1, maxUniformBlockNameLength: -1 };
-              var utable = ptable.uniforms;
-              var numUniforms = GLctx.getProgramParameter(p, 35718);
-              for (var i = 0; i < numUniforms; ++i) {
-                var u = GLctx.getActiveUniform(p, i);
-                var name2 = u.name;
-                ptable.maxUniformLength = Math.max(ptable.maxUniformLength, name2.length + 1);
-                if (name2.slice(-1) == "]") {
-                  name2 = name2.slice(0, name2.lastIndexOf("["));
-                }
-                var loc = GLctx.getUniformLocation(p, name2);
-                if (loc) {
-                  var id = GL.getNewId(GL.uniforms);
-                  utable[name2] = [u.size, id];
-                  GL.uniforms[id] = loc;
-                  for (var j = 1; j < u.size; ++j) {
-                    var n = name2 + "[" + j + "]";
-                    loc = GLctx.getUniformLocation(p, n);
-                    id = GL.getNewId(GL.uniforms);
-                    GL.uniforms[id] = loc;
-                  }
-                }
-              }
             } };
             var __emscripten_webgl_power_preferences = ["default", "low-power", "high-performance"];
             function _emscripten_webgl_do_create_context(target, attributes) {
               var a = attributes >> 2;
-              var powerPreference = GROWABLE_HEAP_I32()[a + (24 >> 2)];
-              var contextAttributes = { "alpha": !!GROWABLE_HEAP_I32()[a + (0 >> 2)], "depth": !!GROWABLE_HEAP_I32()[a + (4 >> 2)], "stencil": !!GROWABLE_HEAP_I32()[a + (8 >> 2)], "antialias": !!GROWABLE_HEAP_I32()[a + (12 >> 2)], "premultipliedAlpha": !!GROWABLE_HEAP_I32()[a + (16 >> 2)], "preserveDrawingBuffer": !!GROWABLE_HEAP_I32()[a + (20 >> 2)], "powerPreference": __emscripten_webgl_power_preferences[powerPreference], "failIfMajorPerformanceCaveat": !!GROWABLE_HEAP_I32()[a + (28 >> 2)], majorVersion: GROWABLE_HEAP_I32()[a + (32 >> 2)], minorVersion: GROWABLE_HEAP_I32()[a + (36 >> 2)], enableExtensionsByDefault: GROWABLE_HEAP_I32()[a + (40 >> 2)], explicitSwapControl: GROWABLE_HEAP_I32()[a + (44 >> 2)], proxyContextToMainThread: GROWABLE_HEAP_I32()[a + (48 >> 2)], renderViaOffscreenBackBuffer: GROWABLE_HEAP_I32()[a + (52 >> 2)] };
+              var powerPreference = GROWABLE_HEAP_I32()[a + (24 >> 2) >>> 0];
+              var contextAttributes = { "alpha": !!GROWABLE_HEAP_I32()[a + (0 >> 2) >>> 0], "depth": !!GROWABLE_HEAP_I32()[a + (4 >> 2) >>> 0], "stencil": !!GROWABLE_HEAP_I32()[a + (8 >> 2) >>> 0], "antialias": !!GROWABLE_HEAP_I32()[a + (12 >> 2) >>> 0], "premultipliedAlpha": !!GROWABLE_HEAP_I32()[a + (16 >> 2) >>> 0], "preserveDrawingBuffer": !!GROWABLE_HEAP_I32()[a + (20 >> 2) >>> 0], "powerPreference": __emscripten_webgl_power_preferences[powerPreference], "failIfMajorPerformanceCaveat": !!GROWABLE_HEAP_I32()[a + (28 >> 2) >>> 0], majorVersion: GROWABLE_HEAP_I32()[a + (32 >> 2) >>> 0], minorVersion: GROWABLE_HEAP_I32()[a + (36 >> 2) >>> 0], enableExtensionsByDefault: GROWABLE_HEAP_I32()[a + (40 >> 2) >>> 0], explicitSwapControl: GROWABLE_HEAP_I32()[a + (44 >> 2) >>> 0], proxyContextToMainThread: GROWABLE_HEAP_I32()[a + (48 >> 2) >>> 0], renderViaOffscreenBackBuffer: GROWABLE_HEAP_I32()[a + (52 >> 2) >>> 0] };
               var canvas = findCanvasEventTarget(target);
               if (!canvas) {
                 return 0;
@@ -52147,7 +52240,10 @@
                 var lang = (typeof navigator === "object" && navigator.languages && navigator.languages[0] || "C").replace("-", "_") + ".UTF-8";
                 var env = { "USER": "web_user", "LOGNAME": "web_user", "PATH": "/", "PWD": "/", "HOME": "/home/web_user", "LANG": lang, "_": getExecutableName() };
                 for (var x in ENV) {
-                  env[x] = ENV[x];
+                  if (ENV[x] === void 0)
+                    delete env[x];
+                  else
+                    env[x] = ENV[x];
                 }
                 var strings = [];
                 for (var x in env) {
@@ -52159,12 +52255,12 @@
             }
             function _environ_get(__environ, environ_buf) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(5, 1, __environ, environ_buf);
+                return _emscripten_proxy_to_main_thread_js(6, 1, __environ, environ_buf);
               try {
                 var bufSize = 0;
                 getEnvStrings().forEach(function(string, i) {
                   var ptr = environ_buf + bufSize;
-                  GROWABLE_HEAP_I32()[__environ + i * 4 >> 2] = ptr;
+                  GROWABLE_HEAP_I32()[__environ + i * 4 >>> 2] = ptr;
                   writeAsciiToMemory(string, ptr);
                   bufSize += string.length + 1;
                 });
@@ -52177,15 +52273,15 @@
             }
             function _environ_sizes_get(penviron_count, penviron_buf_size) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(6, 1, penviron_count, penviron_buf_size);
+                return _emscripten_proxy_to_main_thread_js(7, 1, penviron_count, penviron_buf_size);
               try {
                 var strings = getEnvStrings();
-                GROWABLE_HEAP_I32()[penviron_count >> 2] = strings.length;
+                GROWABLE_HEAP_I32()[penviron_count >>> 2] = strings.length;
                 var bufSize = 0;
                 strings.forEach(function(string) {
                   bufSize += string.length + 1;
                 });
-                GROWABLE_HEAP_I32()[penviron_buf_size >> 2] = bufSize;
+                GROWABLE_HEAP_I32()[penviron_buf_size >>> 2] = bufSize;
                 return 0;
               } catch (e) {
                 if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
@@ -52195,7 +52291,7 @@
             }
             function _fd_close(fd) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(7, 1, fd);
+                return _emscripten_proxy_to_main_thread_js(8, 1, fd);
               try {
                 var stream = SYSCALLS.getStreamFromFD(fd);
                 FS.close(stream);
@@ -52208,11 +52304,11 @@
             }
             function _fd_read(fd, iov, iovcnt, pnum) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(8, 1, fd, iov, iovcnt, pnum);
+                return _emscripten_proxy_to_main_thread_js(9, 1, fd, iov, iovcnt, pnum);
               try {
                 var stream = SYSCALLS.getStreamFromFD(fd);
                 var num = SYSCALLS.doReadv(stream, iov, iovcnt);
-                GROWABLE_HEAP_I32()[pnum >> 2] = num;
+                GROWABLE_HEAP_I32()[pnum >>> 2] = num;
                 return 0;
               } catch (e) {
                 if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
@@ -52222,7 +52318,7 @@
             }
             function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(9, 1, fd, offset_low, offset_high, whence, newOffset);
+                return _emscripten_proxy_to_main_thread_js(10, 1, fd, offset_low, offset_high, whence, newOffset);
               try {
                 var stream = SYSCALLS.getStreamFromFD(fd);
                 var HIGH_OFFSET = 4294967296;
@@ -52232,7 +52328,7 @@
                   return -61;
                 }
                 FS.llseek(stream, offset, whence);
-                tempI64 = [stream.position >>> 0, (tempDouble = stream.position, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0)], GROWABLE_HEAP_I32()[newOffset >> 2] = tempI64[0], GROWABLE_HEAP_I32()[newOffset + 4 >> 2] = tempI64[1];
+                tempI64 = [stream.position >>> 0, (tempDouble = stream.position, +Math.abs(tempDouble) >= 1 ? tempDouble > 0 ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>> 0 : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>> 0 : 0)], GROWABLE_HEAP_I32()[newOffset >>> 2] = tempI64[0], GROWABLE_HEAP_I32()[newOffset + 4 >>> 2] = tempI64[1];
                 if (stream.getdents && offset === 0 && whence === 0)
                   stream.getdents = null;
                 return 0;
@@ -52244,11 +52340,11 @@
             }
             function _fd_write(fd, iov, iovcnt, pnum) {
               if (ENVIRONMENT_IS_PTHREAD)
-                return _emscripten_proxy_to_main_thread_js(10, 1, fd, iov, iovcnt, pnum);
+                return _emscripten_proxy_to_main_thread_js(11, 1, fd, iov, iovcnt, pnum);
               try {
                 var stream = SYSCALLS.getStreamFromFD(fd);
                 var num = SYSCALLS.doWritev(stream, iov, iovcnt);
-                GROWABLE_HEAP_I32()[pnum >> 2] = num;
+                GROWABLE_HEAP_I32()[pnum >>> 2] = num;
                 return 0;
               } catch (e) {
                 if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
@@ -52256,15 +52352,13 @@
                 return e.errno;
               }
             }
-            function _pthread_cleanup_push(routine, arg) {
-              PThread.threadExitHandlers.push(function() {
-                wasmTable.get(routine)(arg);
-              });
-            }
             function spawnThread(threadParams) {
               if (ENVIRONMENT_IS_PTHREAD)
                 throw "Internal Error! spawnThread() can only ever be called from main application thread!";
               var worker = PThread.getNewWorker();
+              if (!worker) {
+                return 6;
+              }
               if (worker.pthread !== void 0)
                 throw "Internal error!";
               if (!threadParams.pthread_ptr)
@@ -52272,31 +52366,24 @@
               PThread.runningWorkers.push(worker);
               var tlsMemory = _malloc(128 * 4);
               for (var i = 0; i < 128; ++i) {
-                GROWABLE_HEAP_I32()[tlsMemory + i * 4 >> 2] = 0;
+                GROWABLE_HEAP_I32()[tlsMemory + i * 4 >>> 2] = 0;
               }
               var stackHigh = threadParams.stackBase + threadParams.stackSize;
-              var pthread = PThread.pthreads[threadParams.pthread_ptr] = { worker, stackBase: threadParams.stackBase, stackSize: threadParams.stackSize, allocatedOwnStack: threadParams.allocatedOwnStack, thread: threadParams.pthread_ptr, threadInfoStruct: threadParams.pthread_ptr };
+              var pthread = PThread.pthreads[threadParams.pthread_ptr] = { worker, stackBase: threadParams.stackBase, stackSize: threadParams.stackSize, allocatedOwnStack: threadParams.allocatedOwnStack, threadInfoStruct: threadParams.pthread_ptr };
               var tis = pthread.threadInfoStruct >> 2;
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (0 >> 2), 0);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (4 >> 2), 0);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (8 >> 2), 0);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (68 >> 2), threadParams.detached);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (104 >> 2), tlsMemory);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (48 >> 2), 0);
+              Atomics.store(GROWABLE_HEAP_U32(), tis + (64 >> 2), threadParams.detached);
+              Atomics.store(GROWABLE_HEAP_U32(), tis + (100 >> 2), tlsMemory);
               Atomics.store(GROWABLE_HEAP_U32(), tis + (40 >> 2), pthread.threadInfoStruct);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (44 >> 2), 42);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (108 >> 2), threadParams.stackSize);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (84 >> 2), threadParams.stackSize);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (80 >> 2), stackHigh);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (108 + 8 >> 2), stackHigh);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (108 + 12 >> 2), threadParams.detached);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (108 + 20 >> 2), threadParams.schedPolicy);
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (108 + 24 >> 2), threadParams.schedPrio);
+              Atomics.store(GROWABLE_HEAP_U32(), tis + (80 >> 2), threadParams.stackSize);
+              Atomics.store(GROWABLE_HEAP_U32(), tis + (76 >> 2), stackHigh);
+              Atomics.store(GROWABLE_HEAP_U32(), tis + (104 >> 2), threadParams.stackSize);
+              Atomics.store(GROWABLE_HEAP_U32(), tis + (104 + 8 >> 2), stackHigh);
+              Atomics.store(GROWABLE_HEAP_U32(), tis + (104 + 12 >> 2), threadParams.detached);
               var global_libc = _emscripten_get_global_libc();
               var global_locale = global_libc + 40;
-              Atomics.store(GROWABLE_HEAP_U32(), tis + (176 >> 2), global_locale);
+              Atomics.store(GROWABLE_HEAP_U32(), tis + (172 >> 2), global_locale);
               worker.pthread = pthread;
-              var msg = { "cmd": "run", "start_routine": threadParams.startRoutine, "arg": threadParams.arg, "threadInfoStruct": threadParams.pthread_ptr, "selfThreadId": threadParams.pthread_ptr, "parentThreadId": threadParams.parent_pthread_ptr, "stackBase": threadParams.stackBase, "stackSize": threadParams.stackSize };
+              var msg = { "cmd": "run", "start_routine": threadParams.startRoutine, "arg": threadParams.arg, "threadInfoStruct": threadParams.pthread_ptr, "stackBase": threadParams.stackBase, "stackSize": threadParams.stackSize };
               worker.runPthread = function() {
                 msg.time = performance.now();
                 worker.postMessage(msg, threadParams.transferList);
@@ -52305,31 +52392,8 @@
                 worker.runPthread();
                 delete worker.runPthread;
               }
-            }
-            function _pthread_getschedparam(thread, policy, schedparam) {
-              if (!policy && !schedparam)
-                return ERRNO_CODES.EINVAL;
-              if (!thread) {
-                err("pthread_getschedparam called with a null thread pointer!");
-                return ERRNO_CODES.ESRCH;
-              }
-              var self2 = GROWABLE_HEAP_I32()[thread + 12 >> 2];
-              if (self2 !== thread) {
-                err("pthread_getschedparam attempted on thread " + thread + ", which does not point to a valid thread, or does not exist anymore!");
-                return ERRNO_CODES.ESRCH;
-              }
-              var schedPolicy = Atomics.load(GROWABLE_HEAP_U32(), thread + 108 + 20 >> 2);
-              var schedPrio = Atomics.load(GROWABLE_HEAP_U32(), thread + 108 + 24 >> 2);
-              if (policy)
-                GROWABLE_HEAP_I32()[policy >> 2] = schedPolicy;
-              if (schedparam)
-                GROWABLE_HEAP_I32()[schedparam >> 2] = schedPrio;
               return 0;
             }
-            function _pthread_self() {
-              return __pthread_ptr | 0;
-            }
-            Module["_pthread_self"] = _pthread_self;
             function _pthread_create(pthread_ptr, attr, start_routine, arg) {
               if (typeof SharedArrayBuffer === "undefined") {
                 err("Current environment does not support SharedArrayBuffer, pthreads are not available!");
@@ -52347,27 +52411,11 @@
               var stackSize = 0;
               var stackBase = 0;
               var detached = 0;
-              var schedPolicy = 0;
-              var schedPrio = 0;
-              if (attr) {
-                stackSize = GROWABLE_HEAP_I32()[attr >> 2];
+              if (attr && attr != -1) {
+                stackSize = GROWABLE_HEAP_I32()[attr >>> 2];
                 stackSize += 81920;
-                stackBase = GROWABLE_HEAP_I32()[attr + 8 >> 2];
-                detached = GROWABLE_HEAP_I32()[attr + 12 >> 2] !== 0;
-                var inheritSched = GROWABLE_HEAP_I32()[attr + 16 >> 2] === 0;
-                if (inheritSched) {
-                  var prevSchedPolicy = GROWABLE_HEAP_I32()[attr + 20 >> 2];
-                  var prevSchedPrio = GROWABLE_HEAP_I32()[attr + 24 >> 2];
-                  var parentThreadPtr = PThread.currentProxiedOperationCallerThread ? PThread.currentProxiedOperationCallerThread : _pthread_self();
-                  _pthread_getschedparam(parentThreadPtr, attr + 20, attr + 24);
-                  schedPolicy = GROWABLE_HEAP_I32()[attr + 20 >> 2];
-                  schedPrio = GROWABLE_HEAP_I32()[attr + 24 >> 2];
-                  GROWABLE_HEAP_I32()[attr + 20 >> 2] = prevSchedPolicy;
-                  GROWABLE_HEAP_I32()[attr + 24 >> 2] = prevSchedPrio;
-                } else {
-                  schedPolicy = GROWABLE_HEAP_I32()[attr + 20 >> 2];
-                  schedPrio = GROWABLE_HEAP_I32()[attr + 24 >> 2];
-                }
+                stackBase = GROWABLE_HEAP_I32()[attr + 8 >>> 2];
+                detached = GROWABLE_HEAP_I32()[attr + 12 >>> 2] !== 0;
               } else {
                 stackSize = 2097152;
               }
@@ -52378,23 +52426,22 @@
                 stackBase -= stackSize;
                 assert(stackBase > 0);
               }
-              var threadInfoStruct2 = _malloc(232);
-              for (var i = 0; i < 232 >> 2; ++i)
-                GROWABLE_HEAP_U32()[(threadInfoStruct2 >> 2) + i] = 0;
-              GROWABLE_HEAP_I32()[pthread_ptr >> 2] = threadInfoStruct2;
-              GROWABLE_HEAP_I32()[threadInfoStruct2 + 12 >> 2] = threadInfoStruct2;
-              var headPtr = threadInfoStruct2 + 156;
-              GROWABLE_HEAP_I32()[headPtr >> 2] = headPtr;
-              var threadParams = { stackBase, stackSize, allocatedOwnStack, schedPolicy, schedPrio, detached, startRoutine: start_routine, pthread_ptr: threadInfoStruct2, parent_pthread_ptr: _pthread_self(), arg, transferList };
+              var threadInfoStruct = _malloc(228);
+              for (var i = 0; i < 228 >> 2; ++i)
+                GROWABLE_HEAP_U32()[(threadInfoStruct >> 2) + i >>> 0] = 0;
+              GROWABLE_HEAP_I32()[pthread_ptr >>> 2] = threadInfoStruct;
+              GROWABLE_HEAP_I32()[threadInfoStruct + 12 >>> 2] = threadInfoStruct;
+              var headPtr = threadInfoStruct + 152;
+              GROWABLE_HEAP_I32()[headPtr >>> 2] = headPtr;
+              var threadParams = { stackBase, stackSize, allocatedOwnStack, detached, startRoutine: start_routine, pthread_ptr: threadInfoStruct, arg, transferList };
               if (ENVIRONMENT_IS_PTHREAD) {
                 threadParams.cmd = "spawnThread";
                 postMessage(threadParams, transferList);
-              } else {
-                spawnThread(threadParams);
+                return 0;
               }
-              return 0;
+              return spawnThread(threadParams);
             }
-            function _setTempRet0($i) {
+            function _setTempRet0(val) {
             }
             function __isLeapYear(year) {
               return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
@@ -52430,8 +52477,8 @@
               return newDate;
             }
             function _strftime(s, maxsize, format, tm) {
-              var tm_zone = GROWABLE_HEAP_I32()[tm + 40 >> 2];
-              var date = { tm_sec: GROWABLE_HEAP_I32()[tm >> 2], tm_min: GROWABLE_HEAP_I32()[tm + 4 >> 2], tm_hour: GROWABLE_HEAP_I32()[tm + 8 >> 2], tm_mday: GROWABLE_HEAP_I32()[tm + 12 >> 2], tm_mon: GROWABLE_HEAP_I32()[tm + 16 >> 2], tm_year: GROWABLE_HEAP_I32()[tm + 20 >> 2], tm_wday: GROWABLE_HEAP_I32()[tm + 24 >> 2], tm_yday: GROWABLE_HEAP_I32()[tm + 28 >> 2], tm_isdst: GROWABLE_HEAP_I32()[tm + 32 >> 2], tm_gmtoff: GROWABLE_HEAP_I32()[tm + 36 >> 2], tm_zone: tm_zone ? UTF8ToString(tm_zone) : "" };
+              var tm_zone = GROWABLE_HEAP_I32()[tm + 40 >>> 2];
+              var date = { tm_sec: GROWABLE_HEAP_I32()[tm >>> 2], tm_min: GROWABLE_HEAP_I32()[tm + 4 >>> 2], tm_hour: GROWABLE_HEAP_I32()[tm + 8 >>> 2], tm_mday: GROWABLE_HEAP_I32()[tm + 12 >>> 2], tm_mon: GROWABLE_HEAP_I32()[tm + 16 >>> 2], tm_year: GROWABLE_HEAP_I32()[tm + 20 >>> 2], tm_wday: GROWABLE_HEAP_I32()[tm + 24 >>> 2], tm_yday: GROWABLE_HEAP_I32()[tm + 28 >>> 2], tm_isdst: GROWABLE_HEAP_I32()[tm + 32 >>> 2], tm_gmtoff: GROWABLE_HEAP_I32()[tm + 36 >>> 2], tm_zone: tm_zone ? UTF8ToString(tm_zone) : "" };
               var pattern = UTF8ToString(format);
               var EXPANSION_RULES_1 = { "%c": "%a %b %d %H:%M:%S %Y", "%D": "%m/%d/%y", "%F": "%Y-%m-%d", "%h": "%b", "%r": "%I:%M:%S %p", "%R": "%H:%M", "%T": "%H:%M:%S", "%x": "%m/%d/%y", "%X": "%H:%M:%S", "%Ec": "%c", "%EC": "%C", "%Ex": "%m/%d/%y", "%EX": "%H:%M:%S", "%Ey": "%y", "%EY": "%Y", "%Od": "%d", "%Oe": "%e", "%OH": "%H", "%OI": "%I", "%Om": "%m", "%OM": "%M", "%OS": "%S", "%Ou": "%u", "%OU": "%U", "%OV": "%V", "%Ow": "%w", "%OW": "%W", "%Oy": "%y" };
               for (var rule in EXPANSION_RULES_1) {
@@ -52602,7 +52649,7 @@
                 return "%";
               } };
               for (var rule in EXPANSION_RULES_2) {
-                if (pattern.indexOf(rule) >= 0) {
+                if (pattern.includes(rule)) {
                   pattern = pattern.replace(new RegExp(rule, "g"), EXPANSION_RULES_2[rule](date));
                 }
               }
@@ -52664,7 +52711,7 @@
             UnboundTypeError = Module["UnboundTypeError"] = extendError(Error, "UnboundTypeError");
             init_emval();
             var GLctx;
-            var proxiedFunctionTable = [null, _atexit, ___sys_ioctl, ___sys_open, _emscripten_set_canvas_element_size_main_thread, _environ_get, _environ_sizes_get, _fd_close, _fd_read, _fd_seek, _fd_write];
+            var proxiedFunctionTable = [null, _atexit, ___sys_fcntl64, ___sys_ioctl, ___sys_open, _emscripten_set_canvas_element_size_main_thread, _environ_get, _environ_sizes_get, _fd_close, _fd_read, _fd_seek, _fd_write];
             function intArrayFromString(stringy, dontAddNull, length) {
               var len = length > 0 ? length : lengthBytesUTF8(stringy) + 1;
               var u8array = new Array(len);
@@ -52673,23 +52720,22 @@
                 u8array.length = numBytesWritten;
               return u8array;
             }
-            if (!ENVIRONMENT_IS_PTHREAD)
-              __ATINIT__.push({ func: function() {
-                ___wasm_call_ctors();
-              } });
-            var asmLibraryArg = { "p": ___assert_fail, "H": ___cxa_allocate_exception, "G": ___cxa_throw, "ha": ___sys_ioctl, "ia": ___sys_open, "na": __embind_finalize_value_array, "w": __embind_finalize_value_object, "ka": __embind_register_bool, "z": __embind_register_class, "y": __embind_register_class_constructor, "e": __embind_register_class_function, "ja": __embind_register_emval, "ma": __embind_register_enum, "E": __embind_register_enum_value, "N": __embind_register_float, "i": __embind_register_function, "u": __embind_register_integer, "q": __embind_register_memory_view, "O": __embind_register_std_string, "F": __embind_register_std_wstring, "oa": __embind_register_value_array, "l": __embind_register_value_array_element, "x": __embind_register_value_object, "h": __embind_register_value_object_field, "la": __embind_register_void, "$": __emscripten_notify_thread_queue, "s": __emval_as, "P": __emval_call, "b": __emval_decref, "Z": __emval_get_global, "t": __emval_get_property, "o": __emval_incref, "ba": __emval_instanceof, "Q": __emval_is_number, "I": __emval_new_array, "j": __emval_new_cstring, "A": __emval_new_object, "r": __emval_run_destructors, "m": __emval_set_property, "g": __emval_take_value, "K": _abort, "fa": _clock_gettime, "B": _emscripten_asm_const_int, "aa": _emscripten_check_blocking_allowed, "J": _emscripten_conditional_set_current_thread_status, "k": _emscripten_futex_wait, "n": _emscripten_futex_wake, "d": _emscripten_get_now, "D": _emscripten_is_main_browser_thread, "C": _emscripten_is_main_runtime_thread, "U": _emscripten_memcpy_big, "W": _emscripten_receive_on_main_thread_js, "v": _emscripten_resize_heap, "X": _emscripten_set_canvas_element_size, "f": _emscripten_set_current_thread_status, "Y": _emscripten_webgl_create_context, "da": _environ_get, "ea": _environ_sizes_get, "M": _fd_close, "ga": _fd_read, "R": _fd_seek, "L": _fd_write, "T": initPthreadsJS, "a": wasmMemory || Module["wasmMemory"], "V": _pthread_cleanup_push, "_": _pthread_create, "c": _pthread_self, "S": _setTempRet0, "ca": _strftime_l };
+            var asmLibraryArg = { "l": ___assert_fail, "B": ___cxa_allocate_exception, "ka": ___cxa_thread_atexit, "A": ___cxa_throw, "D": ___sys_fcntl64, "V": ___sys_ioctl, "W": ___sys_open, "ma": __embind_finalize_value_array, "s": __embind_finalize_value_object, "O": __embind_register_bigint, "ia": __embind_register_bool, "v": __embind_register_class, "u": __embind_register_class_constructor, "c": __embind_register_class_function, "ha": __embind_register_emval, "la": __embind_register_enum, "y": __embind_register_enum_value, "J": __embind_register_float, "f": __embind_register_function, "p": __embind_register_integer, "k": __embind_register_memory_view, "K": __embind_register_std_string, "z": __embind_register_std_wstring, "na": __embind_register_value_array, "h": __embind_register_value_array_element, "t": __embind_register_value_object, "e": __embind_register_value_object_field, "ja": __embind_register_void, "ea": __emscripten_notify_thread_queue, "n": __emval_as, "L": __emval_call, "b": __emval_decref, "U": __emval_get_global, "o": __emval_get_property, "j": __emval_incref, "ca": __emval_instanceof, "M": __emval_is_number, "C": __emval_new_array, "g": __emval_new_cstring, "w": __emval_new_object, "m": __emval_run_destructors, "i": __emval_set_property, "d": __emval_take_value, "I": _abort, "T": _clock_gettime, "G": _emscripten_asm_const_int, "_": _emscripten_check_blocking_allowed, "F": _emscripten_conditional_set_current_thread_status, "r": _emscripten_futex_wait, "q": _emscripten_futex_wake, "x": _emscripten_get_now, "R": _emscripten_memcpy_big, "$": _emscripten_receive_on_main_thread_js, "S": _emscripten_resize_heap, "aa": _emscripten_set_canvas_element_size, "E": _emscripten_set_current_thread_status, "ba": _emscripten_webgl_create_context, "Y": _environ_get, "Z": _environ_sizes_get, "H": _fd_close, "ga": _fd_read, "N": _fd_seek, "fa": _fd_write, "Q": initPthreadsJS, "a": wasmMemory || Module["wasmMemory"], "da": _pthread_create, "P": _setTempRet0, "X": _strftime_l };
             createWasm();
-            var ___wasm_call_ctors = Module["___wasm_call_ctors"] = function() {
-              return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["qa"]).apply(null, arguments);
+            Module["___wasm_call_ctors"] = function() {
+              return (Module["___wasm_call_ctors"] = Module["asm"]["oa"]).apply(null, arguments);
             };
             Module["_main"] = function() {
-              return (Module["_main"] = Module["asm"]["ra"]).apply(null, arguments);
+              return (Module["_main"] = Module["asm"]["pa"]).apply(null, arguments);
             };
             var _malloc = Module["_malloc"] = function() {
-              return (_malloc = Module["_malloc"] = Module["asm"]["sa"]).apply(null, arguments);
+              return (_malloc = Module["_malloc"] = Module["asm"]["qa"]).apply(null, arguments);
             };
             var _free = Module["_free"] = function() {
-              return (_free = Module["_free"] = Module["asm"]["ta"]).apply(null, arguments);
+              return (_free = Module["_free"] = Module["asm"]["ra"]).apply(null, arguments);
+            };
+            Module["_emscripten_tls_init"] = function() {
+              return (Module["_emscripten_tls_init"] = Module["asm"]["sa"]).apply(null, arguments);
             };
             var ___getTypeName = Module["___getTypeName"] = function() {
               return (___getTypeName = Module["___getTypeName"] = Module["asm"]["ua"]).apply(null, arguments);
@@ -52697,106 +52743,74 @@
             Module["___embind_register_native_and_builtin_types"] = function() {
               return (Module["___embind_register_native_and_builtin_types"] = Module["asm"]["va"]).apply(null, arguments);
             };
-            var ___errno_location = Module["___errno_location"] = function() {
-              return (___errno_location = Module["___errno_location"] = Module["asm"]["wa"]).apply(null, arguments);
-            };
-            var _emscripten_get_global_libc = Module["_emscripten_get_global_libc"] = function() {
-              return (_emscripten_get_global_libc = Module["_emscripten_get_global_libc"] = Module["asm"]["xa"]).apply(null, arguments);
-            };
-            Module["___em_js__initPthreadsJS"] = function() {
-              return (Module["___em_js__initPthreadsJS"] = Module["asm"]["ya"]).apply(null, arguments);
-            };
-            var stackSave = Module["stackSave"] = function() {
-              return (stackSave = Module["stackSave"] = Module["asm"]["za"]).apply(null, arguments);
-            };
-            var stackRestore = Module["stackRestore"] = function() {
-              return (stackRestore = Module["stackRestore"] = Module["asm"]["Aa"]).apply(null, arguments);
-            };
-            var stackAlloc = Module["stackAlloc"] = function() {
-              return (stackAlloc = Module["stackAlloc"] = Module["asm"]["Ba"]).apply(null, arguments);
-            };
-            var _emscripten_stack_set_limits = Module["_emscripten_stack_set_limits"] = function() {
-              return (_emscripten_stack_set_limits = Module["_emscripten_stack_set_limits"] = Module["asm"]["Ca"]).apply(null, arguments);
-            };
-            var _memalign = Module["_memalign"] = function() {
-              return (_memalign = Module["_memalign"] = Module["asm"]["Da"]).apply(null, arguments);
-            };
-            Module["_emscripten_main_browser_thread_id"] = function() {
-              return (Module["_emscripten_main_browser_thread_id"] = Module["asm"]["Ea"]).apply(null, arguments);
-            };
-            var ___pthread_tsd_run_dtors = Module["___pthread_tsd_run_dtors"] = function() {
-              return (___pthread_tsd_run_dtors = Module["___pthread_tsd_run_dtors"] = Module["asm"]["Fa"]).apply(null, arguments);
-            };
-            var _emscripten_main_thread_process_queued_calls = Module["_emscripten_main_thread_process_queued_calls"] = function() {
-              return (_emscripten_main_thread_process_queued_calls = Module["_emscripten_main_thread_process_queued_calls"] = Module["asm"]["Ga"]).apply(null, arguments);
-            };
             Module["_emscripten_current_thread_process_queued_calls"] = function() {
-              return (Module["_emscripten_current_thread_process_queued_calls"] = Module["asm"]["Ha"]).apply(null, arguments);
+              return (Module["_emscripten_current_thread_process_queued_calls"] = Module["asm"]["wa"]).apply(null, arguments);
             };
             var _emscripten_register_main_browser_thread_id = Module["_emscripten_register_main_browser_thread_id"] = function() {
-              return (_emscripten_register_main_browser_thread_id = Module["_emscripten_register_main_browser_thread_id"] = Module["asm"]["Ia"]).apply(null, arguments);
+              return (_emscripten_register_main_browser_thread_id = Module["_emscripten_register_main_browser_thread_id"] = Module["asm"]["xa"]).apply(null, arguments);
             };
-            var _do_emscripten_dispatch_to_thread = Module["_do_emscripten_dispatch_to_thread"] = function() {
-              return (_do_emscripten_dispatch_to_thread = Module["_do_emscripten_dispatch_to_thread"] = Module["asm"]["Ja"]).apply(null, arguments);
-            };
-            Module["_emscripten_async_run_in_main_thread"] = function() {
-              return (Module["_emscripten_async_run_in_main_thread"] = Module["asm"]["Ka"]).apply(null, arguments);
-            };
-            Module["_emscripten_sync_run_in_main_thread"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread"] = Module["asm"]["La"]).apply(null, arguments);
-            };
-            Module["_emscripten_sync_run_in_main_thread_0"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread_0"] = Module["asm"]["Ma"]).apply(null, arguments);
-            };
-            Module["_emscripten_sync_run_in_main_thread_1"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread_1"] = Module["asm"]["Na"]).apply(null, arguments);
-            };
-            Module["_emscripten_sync_run_in_main_thread_2"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread_2"] = Module["asm"]["Oa"]).apply(null, arguments);
-            };
-            Module["_emscripten_sync_run_in_main_thread_xprintf_varargs"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread_xprintf_varargs"] = Module["asm"]["Pa"]).apply(null, arguments);
-            };
-            Module["_emscripten_sync_run_in_main_thread_3"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread_3"] = Module["asm"]["Qa"]).apply(null, arguments);
+            var __emscripten_do_dispatch_to_thread = Module["__emscripten_do_dispatch_to_thread"] = function() {
+              return (__emscripten_do_dispatch_to_thread = Module["__emscripten_do_dispatch_to_thread"] = Module["asm"]["ya"]).apply(null, arguments);
             };
             var _emscripten_sync_run_in_main_thread_4 = Module["_emscripten_sync_run_in_main_thread_4"] = function() {
-              return (_emscripten_sync_run_in_main_thread_4 = Module["_emscripten_sync_run_in_main_thread_4"] = Module["asm"]["Ra"]).apply(null, arguments);
+              return (_emscripten_sync_run_in_main_thread_4 = Module["_emscripten_sync_run_in_main_thread_4"] = Module["asm"]["za"]).apply(null, arguments);
             };
-            Module["_emscripten_sync_run_in_main_thread_5"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread_5"] = Module["asm"]["Sa"]).apply(null, arguments);
-            };
-            Module["_emscripten_sync_run_in_main_thread_6"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread_6"] = Module["asm"]["Ta"]).apply(null, arguments);
-            };
-            Module["_emscripten_sync_run_in_main_thread_7"] = function() {
-              return (Module["_emscripten_sync_run_in_main_thread_7"] = Module["asm"]["Ua"]).apply(null, arguments);
+            var _emscripten_main_thread_process_queued_calls = Module["_emscripten_main_thread_process_queued_calls"] = function() {
+              return (_emscripten_main_thread_process_queued_calls = Module["_emscripten_main_thread_process_queued_calls"] = Module["asm"]["Aa"]).apply(null, arguments);
             };
             var _emscripten_run_in_main_runtime_thread_js = Module["_emscripten_run_in_main_runtime_thread_js"] = function() {
-              return (_emscripten_run_in_main_runtime_thread_js = Module["_emscripten_run_in_main_runtime_thread_js"] = Module["asm"]["Va"]).apply(null, arguments);
+              return (_emscripten_run_in_main_runtime_thread_js = Module["_emscripten_run_in_main_runtime_thread_js"] = Module["asm"]["Ba"]).apply(null, arguments);
             };
             var __emscripten_call_on_thread = Module["__emscripten_call_on_thread"] = function() {
-              return (__emscripten_call_on_thread = Module["__emscripten_call_on_thread"] = Module["asm"]["Wa"]).apply(null, arguments);
+              return (__emscripten_call_on_thread = Module["__emscripten_call_on_thread"] = Module["asm"]["Ca"]).apply(null, arguments);
             };
-            Module["_emscripten_tls_init"] = function() {
-              return (Module["_emscripten_tls_init"] = Module["asm"]["Xa"]).apply(null, arguments);
+            var __emscripten_thread_init = Module["__emscripten_thread_init"] = function() {
+              return (__emscripten_thread_init = Module["__emscripten_thread_init"] = Module["asm"]["Da"]).apply(null, arguments);
+            };
+            var _emscripten_get_global_libc = Module["_emscripten_get_global_libc"] = function() {
+              return (_emscripten_get_global_libc = Module["_emscripten_get_global_libc"] = Module["asm"]["Ea"]).apply(null, arguments);
+            };
+            var ___errno_location = Module["___errno_location"] = function() {
+              return (___errno_location = Module["___errno_location"] = Module["asm"]["Fa"]).apply(null, arguments);
+            };
+            var _pthread_self = Module["_pthread_self"] = function() {
+              return (_pthread_self = Module["_pthread_self"] = Module["asm"]["Ga"]).apply(null, arguments);
+            };
+            var ___pthread_tsd_run_dtors = Module["___pthread_tsd_run_dtors"] = function() {
+              return (___pthread_tsd_run_dtors = Module["___pthread_tsd_run_dtors"] = Module["asm"]["Ha"]).apply(null, arguments);
+            };
+            var stackSave = Module["stackSave"] = function() {
+              return (stackSave = Module["stackSave"] = Module["asm"]["Ia"]).apply(null, arguments);
+            };
+            var stackRestore = Module["stackRestore"] = function() {
+              return (stackRestore = Module["stackRestore"] = Module["asm"]["Ja"]).apply(null, arguments);
+            };
+            var stackAlloc = Module["stackAlloc"] = function() {
+              return (stackAlloc = Module["stackAlloc"] = Module["asm"]["Ka"]).apply(null, arguments);
+            };
+            var _emscripten_stack_set_limits = Module["_emscripten_stack_set_limits"] = function() {
+              return (_emscripten_stack_set_limits = Module["_emscripten_stack_set_limits"] = Module["asm"]["La"]).apply(null, arguments);
+            };
+            var _memalign = Module["_memalign"] = function() {
+              return (_memalign = Module["_memalign"] = Module["asm"]["Ma"]).apply(null, arguments);
             };
             Module["dynCall_jiji"] = function() {
-              return (Module["dynCall_jiji"] = Module["asm"]["Ya"]).apply(null, arguments);
+              return (Module["dynCall_jiji"] = Module["asm"]["Na"]).apply(null, arguments);
             };
             Module["dynCall_viijii"] = function() {
-              return (Module["dynCall_viijii"] = Module["asm"]["Za"]).apply(null, arguments);
-            };
-            Module["dynCall_iiiiiijj"] = function() {
-              return (Module["dynCall_iiiiiijj"] = Module["asm"]["_a"]).apply(null, arguments);
+              return (Module["dynCall_viijii"] = Module["asm"]["Oa"]).apply(null, arguments);
             };
             Module["dynCall_iiiiij"] = function() {
-              return (Module["dynCall_iiiiij"] = Module["asm"]["$a"]).apply(null, arguments);
+              return (Module["dynCall_iiiiij"] = Module["asm"]["Pa"]).apply(null, arguments);
             };
             Module["dynCall_iiiiijj"] = function() {
-              return (Module["dynCall_iiiiijj"] = Module["asm"]["ab"]).apply(null, arguments);
+              return (Module["dynCall_iiiiijj"] = Module["asm"]["Qa"]).apply(null, arguments);
             };
-            var _main_thread_futex = Module["_main_thread_futex"] = 51928;
+            Module["dynCall_iiiiiijj"] = function() {
+              return (Module["dynCall_iiiiiijj"] = Module["asm"]["Ra"]).apply(null, arguments);
+            };
+            var __emscripten_allow_main_runtime_queued_calls = Module["__emscripten_allow_main_runtime_queued_calls"] = 44840;
+            var __emscripten_main_thread_futex = Module["__emscripten_main_thread_futex"] = 48292;
             Module["addRunDependency"] = addRunDependency;
             Module["removeRunDependency"] = removeRunDependency;
             Module["FS_createPath"] = FS.createPath;
@@ -52805,10 +52819,10 @@
             Module["FS_createLazyFile"] = FS.createLazyFile;
             Module["FS_createDevice"] = FS.createDevice;
             Module["FS_unlink"] = FS.unlink;
+            Module["keepRuntimeAlive"] = keepRuntimeAlive;
             Module["FS"] = FS;
             Module["PThread"] = PThread;
             Module["PThread"] = PThread;
-            Module["_pthread_self"] = _pthread_self;
             Module["wasmMemory"] = wasmMemory;
             Module["ExitStatus"] = ExitStatus;
             var calledRun;
@@ -52831,19 +52845,15 @@
                 var ret = entryFunction(argc, argv);
                 exit(ret, true);
               } catch (e) {
-                if (e instanceof ExitStatus) {
+                if (e instanceof ExitStatus || e == "unwind") {
                   return;
-                } else if (e == "unwind") {
-                  noExitRuntime = true;
-                  return;
-                } else {
-                  var toLog = e;
-                  if (e && typeof e === "object" && e.stack) {
-                    toLog = [e, e.stack];
-                  }
-                  err("exception thrown: " + toLog);
-                  quit_(1, e);
                 }
+                var toLog = e;
+                if (e && typeof e === "object" && e.stack) {
+                  toLog = [e, e.stack];
+                }
+                err("exception thrown: " + toLog);
+                quit_(1, e);
               } finally {
               }
             }
@@ -52851,9 +52861,16 @@
               if (runDependencies > 0) {
                 return;
               }
-              preRun();
-              if (runDependencies > 0)
+              if (ENVIRONMENT_IS_PTHREAD) {
+                readyPromiseResolve(Module);
+                initRuntime();
+                postMessage({ "cmd": "loaded" });
                 return;
+              }
+              preRun();
+              if (runDependencies > 0) {
+                return;
+              }
               function doRun() {
                 if (calledRun)
                   return;
@@ -52884,10 +52901,13 @@
             }
             Module["run"] = run;
             function exit(status, implicit) {
-              if (implicit && noExitRuntime && status === 0) {
-                return;
+              if (!implicit) {
+                if (ENVIRONMENT_IS_PTHREAD) {
+                  postMessage({ "cmd": "exitProcess", "returnCode": status });
+                  throw new ExitStatus(status);
+                }
               }
-              if (noExitRuntime) ; else {
+              if (keepRuntimeAlive()) ; else {
                 PThread.terminateAllThreads();
                 if (Module["onExit"])
                   Module["onExit"](status);
@@ -52905,13 +52925,11 @@
             var shouldRunNow = true;
             if (Module["noInitialRun"])
               shouldRunNow = false;
-            if (!ENVIRONMENT_IS_PTHREAD)
-              noExitRuntime = true;
-            if (!ENVIRONMENT_IS_PTHREAD) {
-              run();
-            } else {
+            if (ENVIRONMENT_IS_PTHREAD) {
+              noExitRuntime = false;
               PThread.initWorker();
             }
+            run();
             return WebIFCWasm3.ready;
           };
         }();
@@ -52952,14 +52970,9 @@
             var quit_ = function(status, toThrow) {
               throw toThrow;
             };
-            var ENVIRONMENT_IS_WEB = false;
-            var ENVIRONMENT_IS_WORKER = false;
-            var ENVIRONMENT_IS_NODE = false;
-            var ENVIRONMENT_IS_SHELL = false;
-            ENVIRONMENT_IS_WEB = typeof window === "object";
-            ENVIRONMENT_IS_WORKER = typeof importScripts === "function";
-            ENVIRONMENT_IS_NODE = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
-            ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+            var ENVIRONMENT_IS_WEB = typeof window === "object";
+            var ENVIRONMENT_IS_WORKER = typeof importScripts === "function";
+            var ENVIRONMENT_IS_NODE = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
             var scriptDirectory = "";
             function locateFile(path) {
               if (Module["locateFile"]) {
@@ -52967,7 +52980,7 @@
               }
               return scriptDirectory + path;
             }
-            var read_, readBinary;
+            var read_, readAsync, readBinary;
             var nodeFS;
             var nodePath;
             if (ENVIRONMENT_IS_NODE) {
@@ -52992,6 +53005,19 @@
                 assert(ret.buffer);
                 return ret;
               };
+              readAsync = function readAsync2(filename, onload, onerror) {
+                if (!nodeFS)
+                  nodeFS = __require("fs");
+                if (!nodePath)
+                  nodePath = __require("path");
+                filename = nodePath["normalize"](filename);
+                nodeFS["readFile"](filename, function(err2, data) {
+                  if (err2)
+                    onerror(err2);
+                  else
+                    onload(data.buffer);
+                });
+              };
               if (process["argv"].length > 1) {
                 thisProgram = process["argv"][1].replace(/\\/g, "/");
               }
@@ -53002,41 +53028,16 @@
                 }
               });
               process["on"]("unhandledRejection", abort);
-              quit_ = function(status) {
+              quit_ = function(status, toThrow) {
+                if (keepRuntimeAlive()) {
+                  process["exitCode"] = status;
+                  throw toThrow;
+                }
                 process["exit"](status);
               };
               Module["inspect"] = function() {
                 return "[Emscripten Module object]";
               };
-            } else if (ENVIRONMENT_IS_SHELL) {
-              if (typeof read != "undefined") {
-                read_ = function shell_read(f) {
-                  return read(f);
-                };
-              }
-              readBinary = function readBinary2(f) {
-                var data;
-                if (typeof readbuffer === "function") {
-                  return new Uint8Array(readbuffer(f));
-                }
-                data = read(f, "binary");
-                assert(typeof data === "object");
-                return data;
-              };
-              if (typeof scriptArgs != "undefined") {
-                scriptArgs;
-              }
-              if (typeof quit === "function") {
-                quit_ = function(status) {
-                  quit(status);
-                };
-              }
-              if (typeof print !== "undefined") {
-                if (typeof console === "undefined")
-                  console = {};
-                console.log = print;
-                console.warn = console.error = typeof printErr !== "undefined" ? printErr : print;
-              }
             } else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
               if (ENVIRONMENT_IS_WORKER) {
                 scriptDirectory = self.location.href;
@@ -53052,14 +53053,14 @@
                 scriptDirectory = "";
               }
               {
-                read_ = function shell_read(url) {
+                read_ = function(url) {
                   var xhr = new XMLHttpRequest();
                   xhr.open("GET", url, false);
                   xhr.send(null);
                   return xhr.responseText;
                 };
                 if (ENVIRONMENT_IS_WORKER) {
-                  readBinary = function readBinary2(url) {
+                  readBinary = function(url) {
                     var xhr = new XMLHttpRequest();
                     xhr.open("GET", url, false);
                     xhr.responseType = "arraybuffer";
@@ -53067,6 +53068,20 @@
                     return new Uint8Array(xhr.response);
                   };
                 }
+                readAsync = function(url, onload, onerror) {
+                  var xhr = new XMLHttpRequest();
+                  xhr.open("GET", url, true);
+                  xhr.responseType = "arraybuffer";
+                  xhr.onload = function() {
+                    if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
+                      onload(xhr.response);
+                      return;
+                    }
+                    onerror();
+                  };
+                  xhr.onerror = onerror;
+                  xhr.send(null);
+                };
               }
             } else ;
             var out = Module["print"] || console.log.bind(console);
@@ -53083,18 +53098,10 @@
               thisProgram = Module["thisProgram"];
             if (Module["quit"])
               quit_ = Module["quit"];
-            var STACK_ALIGN = 16;
-            function alignMemory(size, factor) {
-              if (!factor)
-                factor = STACK_ALIGN;
-              return Math.ceil(size / factor) * factor;
-            }
             var wasmBinary;
             if (Module["wasmBinary"])
               wasmBinary = Module["wasmBinary"];
-            var noExitRuntime;
-            if (Module["noExitRuntime"])
-              noExitRuntime = Module["noExitRuntime"];
+            var noExitRuntime = Module["noExitRuntime"] || true;
             if (typeof WebAssembly !== "object") {
               abort("no native wasm support detected");
             }
@@ -53325,22 +53332,16 @@
               Module["HEAPF32"] = HEAPF32 = new Float32Array(buf);
               Module["HEAPF64"] = HEAPF64 = new Float64Array(buf);
             }
-            var INITIAL_MEMORY = Module["INITIAL_MEMORY"] || 16777216;
-            if (Module["wasmMemory"]) {
-              wasmMemory = Module["wasmMemory"];
-            } else {
-              wasmMemory = new WebAssembly.Memory({ "initial": INITIAL_MEMORY / 65536, "maximum": 4294967296 / 65536 });
-            }
-            if (wasmMemory) {
-              buffer = wasmMemory.buffer;
-            }
-            INITIAL_MEMORY = buffer.byteLength;
-            updateGlobalBufferAndViews(buffer);
+            Module["INITIAL_MEMORY"] || 16777216;
             var wasmTable;
             var __ATPRERUN__ = [];
             var __ATINIT__ = [];
             var __ATMAIN__ = [];
             var __ATPOSTRUN__ = [];
+            var runtimeKeepaliveCounter = 0;
+            function keepRuntimeAlive() {
+              return noExitRuntime || runtimeKeepaliveCounter > 0;
+            }
             function preRun() {
               if (Module["preRun"]) {
                 if (typeof Module["preRun"] == "function")
@@ -53354,10 +53355,10 @@
             function initRuntime() {
               if (!Module["noFSInit"] && !FS.init.initialized)
                 FS.init();
+              FS.ignorePermissions = false;
               callRuntimeCallbacks(__ATINIT__);
             }
             function preMain() {
-              FS.ignorePermissions = false;
               callRuntimeCallbacks(__ATMAIN__);
             }
             function postRun() {
@@ -53373,11 +53374,17 @@
             function addOnPreRun(cb) {
               __ATPRERUN__.unshift(cb);
             }
+            function addOnInit(cb) {
+              __ATINIT__.unshift(cb);
+            }
             function addOnPostRun(cb) {
               __ATPOSTRUN__.unshift(cb);
             }
             var runDependencies = 0;
             var dependenciesFulfilled = null;
+            function getUniqueRunDependency(id) {
+              return id;
+            }
             function addRunDependency(id) {
               runDependencies++;
               if (Module["monitorRunDependencies"]) {
@@ -53411,28 +53418,25 @@
               readyPromiseReject(e);
               throw e;
             }
-            function hasPrefix(str, prefix) {
-              return String.prototype.startsWith ? str.startsWith(prefix) : str.indexOf(prefix) === 0;
-            }
             var dataURIPrefix = "data:application/octet-stream;base64,";
             function isDataURI(filename) {
-              return hasPrefix(filename, dataURIPrefix);
+              return filename.startsWith(dataURIPrefix);
             }
-            var fileURIPrefix = "file://";
             function isFileURI(filename) {
-              return hasPrefix(filename, fileURIPrefix);
+              return filename.startsWith("file://");
             }
-            var wasmBinaryFile = "web-ifc.wasm";
+            var wasmBinaryFile;
+            wasmBinaryFile = "web-ifc.wasm";
             if (!isDataURI(wasmBinaryFile)) {
               wasmBinaryFile = locateFile(wasmBinaryFile);
             }
-            function getBinary() {
+            function getBinary(file) {
               try {
-                if (wasmBinary) {
+                if (file == wasmBinaryFile && wasmBinary) {
                   return new Uint8Array(wasmBinary);
                 }
                 if (readBinary) {
-                  return readBinary(wasmBinaryFile);
+                  return readBinary(file);
                 } else {
                   throw "both async and sync fetching of the wasm failed";
                 }
@@ -53441,33 +53445,49 @@
               }
             }
             function getBinaryPromise() {
-              if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === "function" && !isFileURI(wasmBinaryFile)) {
-                return fetch(wasmBinaryFile, { credentials: "same-origin" }).then(function(response) {
-                  if (!response["ok"]) {
-                    throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+              if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
+                if (typeof fetch === "function" && !isFileURI(wasmBinaryFile)) {
+                  return fetch(wasmBinaryFile, { credentials: "same-origin" }).then(function(response) {
+                    if (!response["ok"]) {
+                      throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+                    }
+                    return response["arrayBuffer"]();
+                  }).catch(function() {
+                    return getBinary(wasmBinaryFile);
+                  });
+                } else {
+                  if (readAsync) {
+                    return new Promise(function(resolve, reject) {
+                      readAsync(wasmBinaryFile, function(response) {
+                        resolve(new Uint8Array(response));
+                      }, reject);
+                    });
                   }
-                  return response["arrayBuffer"]();
-                }).catch(function() {
-                  return getBinary();
-                });
+                }
               }
-              return Promise.resolve().then(getBinary);
+              return Promise.resolve().then(function() {
+                return getBinary(wasmBinaryFile);
+              });
             }
             function createWasm() {
               var info = { "a": asmLibraryArg };
               function receiveInstance(instance, module2) {
                 var exports3 = instance.exports;
                 Module["asm"] = exports3;
-                wasmTable = Module["asm"]["ba"];
+                wasmMemory = Module["asm"]["$"];
+                updateGlobalBufferAndViews(wasmMemory.buffer);
+                wasmTable = Module["asm"]["ha"];
+                addOnInit(Module["asm"]["aa"]);
                 removeRunDependency();
               }
               addRunDependency();
-              function receiveInstantiatedSource(output) {
-                receiveInstance(output["instance"]);
+              function receiveInstantiationResult(result) {
+                receiveInstance(result["instance"]);
               }
               function instantiateArrayBuffer(receiver) {
                 return getBinaryPromise().then(function(binary) {
-                  return WebAssembly.instantiate(binary, info);
+                  var result = WebAssembly.instantiate(binary, info);
+                  return result;
                 }).then(receiver, function(reason) {
                   err("failed to asynchronously prepare wasm: " + reason);
                   abort(reason);
@@ -53477,14 +53497,14 @@
                 if (!wasmBinary && typeof WebAssembly.instantiateStreaming === "function" && !isDataURI(wasmBinaryFile) && !isFileURI(wasmBinaryFile) && typeof fetch === "function") {
                   return fetch(wasmBinaryFile, { credentials: "same-origin" }).then(function(response) {
                     var result = WebAssembly.instantiateStreaming(response, info);
-                    return result.then(receiveInstantiatedSource, function(reason) {
+                    return result.then(receiveInstantiationResult, function(reason) {
                       err("wasm streaming compile failed: " + reason);
                       err("falling back to ArrayBuffer instantiation");
-                      return instantiateArrayBuffer(receiveInstantiatedSource);
+                      return instantiateArrayBuffer(receiveInstantiationResult);
                     });
                   });
                 } else {
-                  return instantiateArrayBuffer(receiveInstantiatedSource);
+                  return instantiateArrayBuffer(receiveInstantiationResult);
                 }
               }
               if (Module["instantiateWasm"]) {
@@ -53520,56 +53540,43 @@
                 }
               }
             }
-            function dynCallLegacy(sig, ptr, args) {
-              if (args && args.length) {
-                return Module["dynCall_" + sig].apply(null, [ptr].concat(args));
-              }
-              return Module["dynCall_" + sig].call(null, ptr);
-            }
-            function dynCall(sig, ptr, args) {
-              if (sig.indexOf("j") != -1) {
-                return dynCallLegacy(sig, ptr, args);
-              }
-              return wasmTable.get(ptr).apply(null, args);
-            }
             function ___assert_fail(condition, filename, line, func) {
               abort("Assertion failed: " + UTF8ToString(condition) + ", at: " + [filename ? UTF8ToString(filename) : "unknown filename", line, func ? UTF8ToString(func) : "unknown function"]);
             }
-            var ExceptionInfoAttrs = { DESTRUCTOR_OFFSET: 0, REFCOUNT_OFFSET: 4, TYPE_OFFSET: 8, CAUGHT_OFFSET: 12, RETHROWN_OFFSET: 13, SIZE: 16 };
             function ___cxa_allocate_exception(size) {
-              return _malloc(size + ExceptionInfoAttrs.SIZE) + ExceptionInfoAttrs.SIZE;
+              return _malloc(size + 16) + 16;
             }
             function ExceptionInfo(excPtr) {
               this.excPtr = excPtr;
-              this.ptr = excPtr - ExceptionInfoAttrs.SIZE;
+              this.ptr = excPtr - 16;
               this.set_type = function(type) {
-                HEAP32[this.ptr + ExceptionInfoAttrs.TYPE_OFFSET >>> 2] = type;
+                HEAP32[this.ptr + 4 >>> 2] = type;
               };
               this.get_type = function() {
-                return HEAP32[this.ptr + ExceptionInfoAttrs.TYPE_OFFSET >>> 2];
+                return HEAP32[this.ptr + 4 >>> 2];
               };
               this.set_destructor = function(destructor) {
-                HEAP32[this.ptr + ExceptionInfoAttrs.DESTRUCTOR_OFFSET >>> 2] = destructor;
+                HEAP32[this.ptr + 8 >>> 2] = destructor;
               };
               this.get_destructor = function() {
-                return HEAP32[this.ptr + ExceptionInfoAttrs.DESTRUCTOR_OFFSET >>> 2];
+                return HEAP32[this.ptr + 8 >>> 2];
               };
               this.set_refcount = function(refcount) {
-                HEAP32[this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET >>> 2] = refcount;
+                HEAP32[this.ptr >>> 2] = refcount;
               };
               this.set_caught = function(caught) {
                 caught = caught ? 1 : 0;
-                HEAP8[this.ptr + ExceptionInfoAttrs.CAUGHT_OFFSET >>> 0] = caught;
+                HEAP8[this.ptr + 12 >>> 0] = caught;
               };
               this.get_caught = function() {
-                return HEAP8[this.ptr + ExceptionInfoAttrs.CAUGHT_OFFSET >>> 0] != 0;
+                return HEAP8[this.ptr + 12 >>> 0] != 0;
               };
               this.set_rethrown = function(rethrown) {
                 rethrown = rethrown ? 1 : 0;
-                HEAP8[this.ptr + ExceptionInfoAttrs.RETHROWN_OFFSET >>> 0] = rethrown;
+                HEAP8[this.ptr + 13 >>> 0] = rethrown;
               };
               this.get_rethrown = function() {
-                return HEAP8[this.ptr + ExceptionInfoAttrs.RETHROWN_OFFSET >>> 0] != 0;
+                return HEAP8[this.ptr + 13 >>> 0] != 0;
               };
               this.init = function(type, destructor) {
                 this.set_type(type);
@@ -53579,12 +53586,12 @@
                 this.set_rethrown(false);
               };
               this.add_ref = function() {
-                var value = HEAP32[this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET >>> 2];
-                HEAP32[this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET >>> 2] = value + 1;
+                var value = HEAP32[this.ptr >>> 2];
+                HEAP32[this.ptr >>> 2] = value + 1;
               };
               this.release_ref = function() {
-                var prev = HEAP32[this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET >>> 2];
-                HEAP32[this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET >>> 2] = prev - 1;
+                var prev = HEAP32[this.ptr >>> 2];
+                HEAP32[this.ptr >>> 2] = prev - 1;
                 return prev === 1;
               };
             }
@@ -53592,6 +53599,10 @@
               var info = new ExceptionInfo(ptr);
               info.init(type, destructor);
               throw ptr;
+            }
+            function setErrNo(value) {
+              HEAP32[___errno_location() >>> 2] = value;
+              return value;
             }
             var PATH = { splitPath: function(filename) {
               var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
@@ -53785,12 +53796,12 @@
                 var result = null;
                 if (ENVIRONMENT_IS_NODE) {
                   var BUFSIZE = 256;
-                  var buf = Buffer.alloc ? Buffer.alloc(BUFSIZE) : new Buffer(BUFSIZE);
+                  var buf = Buffer.alloc(BUFSIZE);
                   var bytesRead = 0;
                   try {
                     bytesRead = nodeFS.readSync(process.stdin.fd, buf, 0, BUFSIZE, null);
                   } catch (e) {
-                    if (e.toString().indexOf("EOF") != -1)
+                    if (e.toString().includes("EOF"))
                       bytesRead = 0;
                     else
                       throw e;
@@ -53845,11 +53856,7 @@
               }
             } } };
             function mmapAlloc(size) {
-              var alignedSize = alignMemory(size, 16384);
-              var ptr = _malloc(alignedSize);
-              while (size < alignedSize)
-                HEAP8[ptr + size++ >>> 0] = 0;
-              return ptr;
+              abort();
             }
             var MEMFS = { ops_table: null, mount: function(mount) {
               return MEMFS.createNode(null, "/", 16384 | 511, 0);
@@ -53880,16 +53887,9 @@
               node.timestamp = Date.now();
               if (parent) {
                 parent.contents[name2] = node;
+                parent.timestamp = node.timestamp;
               }
               return node;
-            }, getFileDataAsRegularArray: function(node) {
-              if (node.contents && node.contents.subarray) {
-                var arr = [];
-                for (var i = 0; i < node.usedBytes; ++i)
-                  arr.push(node.contents[i]);
-                return arr;
-              }
-              return node.contents;
             }, getFileDataAsTypedArray: function(node) {
               if (!node.contents)
                 return new Uint8Array(0);
@@ -53909,7 +53909,6 @@
               node.contents = new Uint8Array(newCapacity);
               if (node.usedBytes > 0)
                 node.contents.set(oldContents.subarray(0, node.usedBytes), 0);
-              return;
             }, resizeFileStorage: function(node, newSize) {
               newSize >>>= 0;
               if (node.usedBytes == newSize)
@@ -53917,25 +53916,14 @@
               if (newSize == 0) {
                 node.contents = null;
                 node.usedBytes = 0;
-                return;
-              }
-              if (!node.contents || node.contents.subarray) {
+              } else {
                 var oldContents = node.contents;
                 node.contents = new Uint8Array(newSize);
                 if (oldContents) {
                   node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes)));
                 }
                 node.usedBytes = newSize;
-                return;
               }
-              if (!node.contents)
-                node.contents = [];
-              if (node.contents.length > newSize)
-                node.contents.length = newSize;
-              else
-                while (node.contents.length < newSize)
-                  node.contents.push(0);
-              node.usedBytes = newSize;
             }, node_ops: { getattr: function(node) {
               var attr = {};
               attr.dev = FS.isChrdev(node.mode) ? node.id : 1;
@@ -53988,17 +53976,21 @@
                 }
               }
               delete old_node.parent.contents[old_node.name];
+              old_node.parent.timestamp = Date.now();
               old_node.name = new_name;
               new_dir.contents[new_name] = old_node;
+              new_dir.timestamp = old_node.parent.timestamp;
               old_node.parent = new_dir;
             }, unlink: function(parent, name2) {
               delete parent.contents[name2];
+              parent.timestamp = Date.now();
             }, rmdir: function(parent, name2) {
               var node = FS.lookupNode(parent, name2);
               for (var i in node.contents) {
                 throw new FS.ErrnoError(55);
               }
               delete parent.contents[name2];
+              parent.timestamp = Date.now();
             }, readdir: function(node) {
               var entries = [".", ".."];
               for (var key2 in node.contents) {
@@ -54078,7 +54070,9 @@
               MEMFS.expandFileStorage(stream.node, offset + length);
               stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
             }, mmap: function(stream, address, length, position, prot, flags) {
-              assert(address === 0);
+              if (address !== 0) {
+                throw new FS.ErrnoError(28);
+              }
               if (!FS.isFile(stream.node.mode)) {
                 throw new FS.ErrnoError(43);
               }
@@ -54097,7 +54091,7 @@
                   }
                 }
                 allocated = true;
-                ptr = mmapAlloc(length);
+                ptr = mmapAlloc();
                 if (!ptr) {
                   throw new FS.ErrnoError(48);
                 }
@@ -54115,6 +54109,23 @@
               MEMFS.stream_ops.write(stream, buffer2, 0, length, offset, false);
               return 0;
             } } };
+            function asyncLoad(url, onload, onerror, noRunDep) {
+              var dep = !noRunDep ? getUniqueRunDependency("al " + url) : "";
+              readAsync(url, function(arrayBuffer) {
+                assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
+                onload(new Uint8Array(arrayBuffer));
+                if (dep)
+                  removeRunDependency();
+              }, function(event) {
+                if (onerror) {
+                  onerror();
+                } else {
+                  throw 'Loading data file "' + url + '" failed.';
+                }
+              });
+              if (dep)
+                addRunDependency();
+            }
             var FS = { root: null, mounts: [], devices: {}, streams: [], nextInode: 1, nameTable: null, currentPath: "/", initialized: false, ignorePermissions: true, trackingDelegate: {}, tracking: { openFlags: { READ: 1, WRITE: 2 } }, ErrnoError: null, genericErrors: {}, filesystems: null, syncFSRequests: 0, lookupPath: function(path, opts) {
               path = PATH_FS.resolve(FS.cwd(), path);
               opts = opts || {};
@@ -54249,11 +54260,11 @@
               if (FS.ignorePermissions) {
                 return 0;
               }
-              if (perms.indexOf("r") !== -1 && !(node.mode & 292)) {
+              if (perms.includes("r") && !(node.mode & 292)) {
                 return 2;
-              } else if (perms.indexOf("w") !== -1 && !(node.mode & 146)) {
+              } else if (perms.includes("w") && !(node.mode & 146)) {
                 return 2;
-              } else if (perms.indexOf("x") !== -1 && !(node.mode & 73)) {
+              } else if (perms.includes("x") && !(node.mode & 73)) {
                 return 2;
               }
               return 0;
@@ -54447,7 +54458,7 @@
                 var current = FS.nameTable[hash];
                 while (current) {
                   var next = current.name_next;
-                  if (mounts.indexOf(current.mount) !== -1) {
+                  if (mounts.includes(current.mount)) {
                     FS.destroyNode(current);
                   }
                   current = next;
@@ -55050,10 +55061,10 @@
               FS.mkdir("/dev/shm/tmp");
             }, createSpecialDirectories: function() {
               FS.mkdir("/proc");
-              FS.mkdir("/proc/self");
+              var proc_self = FS.mkdir("/proc/self");
               FS.mkdir("/proc/self/fd");
               FS.mount({ mount: function() {
-                var node = FS.createNode("/proc/self", "fd", 16384 | 511, 73);
+                var node = FS.createNode(proc_self, "fd", 16384 | 511, 73);
                 node.node_ops = { lookup: function(parent, name2) {
                   var fd = +name2;
                   var stream = FS.getStream(fd);
@@ -55429,7 +55440,7 @@
               }
               addRunDependency();
               if (typeof url == "string") {
-                Browser.asyncLoad(url, function(byteArray) {
+                asyncLoad(url, function(byteArray) {
                   processData(byteArray);
                 }, onerror);
               } else {
@@ -55531,20 +55542,26 @@
               };
               openRequest.onerror = onerror;
             } };
-            var SYSCALLS = { mappings: {}, DEFAULT_POLLMASK: 5, umask: 511, calculateAt: function(dirfd, path) {
-              if (path[0] !== "/") {
-                var dir;
-                if (dirfd === -100) {
-                  dir = FS.cwd();
-                } else {
-                  var dirstream = FS.getStream(dirfd);
-                  if (!dirstream)
-                    throw new FS.ErrnoError(8);
-                  dir = dirstream.path;
-                }
-                path = PATH.join2(dir, path);
+            var SYSCALLS = { mappings: {}, DEFAULT_POLLMASK: 5, umask: 511, calculateAt: function(dirfd, path, allowEmpty) {
+              if (path[0] === "/") {
+                return path;
               }
-              return path;
+              var dir;
+              if (dirfd === -100) {
+                dir = FS.cwd();
+              } else {
+                var dirstream = FS.getStream(dirfd);
+                if (!dirstream)
+                  throw new FS.ErrnoError(8);
+                dir = dirstream.path;
+              }
+              if (path.length == 0) {
+                if (!allowEmpty) {
+                  throw new FS.ErrnoError(44);
+                }
+                return dir;
+              }
+              return PATH.join2(dir, path);
             }, doStat: function(func, path, buf) {
               try {
                 var stat = func(path);
@@ -55670,6 +55687,55 @@
             }, get64: function(low, high) {
               return low;
             } };
+            function ___sys_fcntl64(fd, cmd, varargs) {
+              SYSCALLS.varargs = varargs;
+              try {
+                var stream = SYSCALLS.getStreamFromFD(fd);
+                switch (cmd) {
+                  case 0: {
+                    var arg = SYSCALLS.get();
+                    if (arg < 0) {
+                      return -28;
+                    }
+                    var newStream;
+                    newStream = FS.open(stream.path, stream.flags, 0, arg);
+                    return newStream.fd;
+                  }
+                  case 1:
+                  case 2:
+                    return 0;
+                  case 3:
+                    return stream.flags;
+                  case 4: {
+                    var arg = SYSCALLS.get();
+                    stream.flags |= arg;
+                    return 0;
+                  }
+                  case 12: {
+                    var arg = SYSCALLS.get();
+                    var offset = 0;
+                    HEAP16[arg + offset >>> 1] = 2;
+                    return 0;
+                  }
+                  case 13:
+                  case 14:
+                    return 0;
+                  case 16:
+                  case 8:
+                    return -28;
+                  case 9:
+                    setErrNo(28);
+                    return -1;
+                  default: {
+                    return -28;
+                  }
+                }
+              } catch (e) {
+                if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
+                  abort(e);
+                return -e.errno;
+              }
+            }
             function ___sys_ioctl(fd, op, varargs) {
               SYSCALLS.varargs = varargs;
               try {
@@ -55730,7 +55796,7 @@
               SYSCALLS.varargs = varargs;
               try {
                 var pathname = SYSCALLS.getStr(path);
-                var mode = SYSCALLS.get();
+                var mode = varargs ? SYSCALLS.get() : 0;
                 var stream = FS.open(pathname, flags, mode);
                 return stream.fd;
               } catch (e) {
@@ -55936,6 +56002,8 @@
                   return ptr;
                 }, "argPackAdvance": 8, "readValueFromPointer": simpleReadValueFromPointer, destructorFunction: rawDestructor }];
               });
+            }
+            function __embind_register_bigint(primitiveType, name2, size, minRange, maxRange) {
             }
             function getShiftFromSize(size) {
               switch (size) {
@@ -56473,8 +56541,17 @@
                 Module[name2].argCount = numArguments;
               }
             }
+            function dynCallLegacy(sig, ptr, args) {
+              var f = Module["dynCall_" + sig];
+              return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
+            }
+            function dynCall(sig, ptr, args) {
+              if (sig.includes("j")) {
+                return dynCallLegacy(sig, ptr, args);
+              }
+              return wasmTable.get(ptr).apply(null, args);
+            }
             function getDynCaller(sig, ptr) {
-              assert(sig.indexOf("j") >= 0, "getDynCaller should only be called with i64 sigs");
               var argCache = [];
               return function() {
                 argCache.length = arguments.length;
@@ -56487,7 +56564,7 @@
             function embind__requireFunction(signature, rawFunction) {
               signature = readLatin1String(signature);
               function makeDynCaller() {
-                if (signature.indexOf("j") != -1) {
+                if (signature.includes("j")) {
                   return getDynCaller(signature, rawFunction);
                 }
                 return wasmTable.get(rawFunction);
@@ -56694,6 +56771,9 @@
               whenDependentTypesAreResolved([], [rawClassType], function(classType) {
                 classType = classType[0];
                 var humanName = classType.name + "." + methodName;
+                if (methodName.startsWith("@@")) {
+                  methodName = Symbol[methodName.substring(2)];
+                }
                 if (isPureVirtual) {
                   classType.registeredClass.pureVirtualFunctions.push(methodName);
                 }
@@ -56922,7 +57002,7 @@
                   return value << bitshift >>> bitshift;
                 };
               }
-              var isUnsignedType = name2.indexOf("unsigned") != -1;
+              var isUnsignedType = name2.includes("unsigned");
               registerType(primitiveType, { name: name2, "fromWireType": fromWireType, "toWireType": function(destructors, value) {
                 if (typeof value !== "number" && typeof value !== "boolean") {
                   throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
@@ -57214,17 +57294,11 @@
                 var t = process["hrtime"]();
                 return t[0] * 1e3 + t[1] / 1e6;
               };
-            } else if (typeof dateNow !== "undefined") {
-              _emscripten_get_now = dateNow;
             } else
               _emscripten_get_now = function() {
                 return performance.now();
               };
             var _emscripten_get_now_is_monotonic = true;
-            function setErrNo(value) {
-              HEAP32[___errno_location() >>> 2] = value;
-              return value;
-            }
             function _clock_gettime(clk_id, tp) {
               var now;
               if (clk_id === 0) {
@@ -57242,9 +57316,6 @@
             function _emscripten_memcpy_big(dest, src, num) {
               HEAPU8.copyWithin(dest >>> 0, src >>> 0, src + num >>> 0);
             }
-            function _emscripten_get_heap_size() {
-              return HEAPU8.length;
-            }
             function emscripten_realloc_buffer(size) {
               try {
                 wasmMemory.grow(size - buffer.byteLength + 65535 >>> 16);
@@ -57254,17 +57325,16 @@
               }
             }
             function _emscripten_resize_heap(requestedSize) {
+              var oldSize = HEAPU8.length;
               requestedSize = requestedSize >>> 0;
-              var oldSize = _emscripten_get_heap_size();
-              var maxHeapSize = 4294967296;
+              var maxHeapSize = 4294901760;
               if (requestedSize > maxHeapSize) {
                 return false;
               }
-              var minHeapSize = 16777216;
               for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
                 var overGrownHeapSize = oldSize * (1 + 0.2 / cutDown);
                 overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 100663296);
-                var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), 65536));
+                var newSize = Math.min(maxHeapSize, alignUp(Math.max(requestedSize, overGrownHeapSize), 65536));
                 var replacement = emscripten_realloc_buffer(newSize);
                 if (replacement) {
                   return true;
@@ -57281,7 +57351,10 @@
                 var lang = (typeof navigator === "object" && navigator.languages && navigator.languages[0] || "C").replace("-", "_") + ".UTF-8";
                 var env = { "USER": "web_user", "LOGNAME": "web_user", "PATH": "/", "PWD": "/", "HOME": "/home/web_user", "LANG": lang, "_": getExecutableName() };
                 for (var x in ENV) {
-                  env[x] = ENV[x];
+                  if (ENV[x] === void 0)
+                    delete env[x];
+                  else
+                    env[x] = ENV[x];
                 }
                 var strings = [];
                 for (var x in env) {
@@ -57378,13 +57451,7 @@
                 return e.errno;
               }
             }
-            function _pthread_mutexattr_destroy() {
-            }
-            function _pthread_mutexattr_init() {
-            }
-            function _pthread_mutexattr_settype() {
-            }
-            function _setTempRet0($i) {
+            function _setTempRet0(val) {
             }
             function __isLeapYear(year) {
               return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
@@ -57592,7 +57659,7 @@
                 return "%";
               } };
               for (var rule in EXPANSION_RULES_2) {
-                if (pattern.indexOf(rule) >= 0) {
+                if (pattern.includes(rule)) {
                   pattern = pattern.replace(new RegExp(rule, "g"), EXPANSION_RULES_2[rule](date));
                 }
               }
@@ -57659,46 +57726,43 @@
                 u8array.length = numBytesWritten;
               return u8array;
             }
-            __ATINIT__.push({ func: function() {
-              ___wasm_call_ctors();
-            } });
-            var asmLibraryArg = { "z": ___assert_fail, "y": ___cxa_allocate_exception, "x": ___cxa_throw, "V": ___sys_ioctl, "W": ___sys_open, "$": __embind_finalize_value_array, "q": __embind_finalize_value_object, "Y": __embind_register_bool, "t": __embind_register_class, "s": __embind_register_class_constructor, "c": __embind_register_class_function, "X": __embind_register_emval, "_": __embind_register_enum, "v": __embind_register_enum_value, "F": __embind_register_float, "f": __embind_register_function, "o": __embind_register_integer, "k": __embind_register_memory_view, "G": __embind_register_std_string, "w": __embind_register_std_wstring, "aa": __embind_register_value_array, "h": __embind_register_value_array_element, "r": __embind_register_value_object, "e": __embind_register_value_object_field, "Z": __embind_register_void, "m": __emval_as, "H": __emval_call, "b": __emval_decref, "J": __emval_get_global, "n": __emval_get_property, "j": __emval_incref, "N": __emval_instanceof, "I": __emval_is_number, "A": __emval_new_array, "g": __emval_new_cstring, "u": __emval_new_object, "l": __emval_run_destructors, "i": __emval_set_property, "d": __emval_take_value, "C": _abort, "T": _clock_gettime, "M": _emscripten_memcpy_big, "p": _emscripten_resize_heap, "R": _environ_get, "S": _environ_sizes_get, "E": _fd_close, "U": _fd_read, "K": _fd_seek, "D": _fd_write, "a": wasmMemory, "B": _pthread_mutexattr_destroy, "P": _pthread_mutexattr_init, "O": _pthread_mutexattr_settype, "L": _setTempRet0, "Q": _strftime_l };
+            var asmLibraryArg = { "y": ___assert_fail, "x": ___cxa_allocate_exception, "w": ___cxa_throw, "A": ___sys_fcntl64, "O": ___sys_ioctl, "P": ___sys_open, "Z": __embind_finalize_value_array, "o": __embind_finalize_value_object, "J": __embind_register_bigint, "W": __embind_register_bool, "r": __embind_register_class, "q": __embind_register_class_constructor, "b": __embind_register_class_function, "V": __embind_register_emval, "Y": __embind_register_enum, "t": __embind_register_enum_value, "D": __embind_register_float, "e": __embind_register_function, "n": __embind_register_integer, "j": __embind_register_memory_view, "E": __embind_register_std_string, "v": __embind_register_std_wstring, "_": __embind_register_value_array, "g": __embind_register_value_array_element, "p": __embind_register_value_object, "d": __embind_register_value_object_field, "X": __embind_register_void, "l": __emval_as, "F": __emval_call, "a": __emval_decref, "H": __emval_get_global, "m": __emval_get_property, "i": __emval_incref, "L": __emval_instanceof, "G": __emval_is_number, "z": __emval_new_array, "f": __emval_new_cstring, "s": __emval_new_object, "k": __emval_run_destructors, "h": __emval_set_property, "c": __emval_take_value, "C": _abort, "N": _clock_gettime, "M": _emscripten_memcpy_big, "u": _emscripten_resize_heap, "R": _environ_get, "S": _environ_sizes_get, "B": _fd_close, "U": _fd_read, "I": _fd_seek, "T": _fd_write, "K": _setTempRet0, "Q": _strftime_l };
             createWasm();
-            var ___wasm_call_ctors = Module["___wasm_call_ctors"] = function() {
-              return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["ca"]).apply(null, arguments);
+            Module["___wasm_call_ctors"] = function() {
+              return (Module["___wasm_call_ctors"] = Module["asm"]["aa"]).apply(null, arguments);
             };
             Module["_main"] = function() {
-              return (Module["_main"] = Module["asm"]["da"]).apply(null, arguments);
+              return (Module["_main"] = Module["asm"]["ba"]).apply(null, arguments);
             };
             var _malloc = Module["_malloc"] = function() {
-              return (_malloc = Module["_malloc"] = Module["asm"]["ea"]).apply(null, arguments);
+              return (_malloc = Module["_malloc"] = Module["asm"]["ca"]).apply(null, arguments);
             };
             var _free = Module["_free"] = function() {
-              return (_free = Module["_free"] = Module["asm"]["fa"]).apply(null, arguments);
+              return (_free = Module["_free"] = Module["asm"]["da"]).apply(null, arguments);
             };
             var ___getTypeName = Module["___getTypeName"] = function() {
-              return (___getTypeName = Module["___getTypeName"] = Module["asm"]["ga"]).apply(null, arguments);
+              return (___getTypeName = Module["___getTypeName"] = Module["asm"]["ea"]).apply(null, arguments);
             };
             Module["___embind_register_native_and_builtin_types"] = function() {
-              return (Module["___embind_register_native_and_builtin_types"] = Module["asm"]["ha"]).apply(null, arguments);
+              return (Module["___embind_register_native_and_builtin_types"] = Module["asm"]["fa"]).apply(null, arguments);
             };
             var ___errno_location = Module["___errno_location"] = function() {
-              return (___errno_location = Module["___errno_location"] = Module["asm"]["ia"]).apply(null, arguments);
+              return (___errno_location = Module["___errno_location"] = Module["asm"]["ga"]).apply(null, arguments);
             };
             Module["dynCall_jiji"] = function() {
-              return (Module["dynCall_jiji"] = Module["asm"]["ja"]).apply(null, arguments);
+              return (Module["dynCall_jiji"] = Module["asm"]["ia"]).apply(null, arguments);
             };
             Module["dynCall_viijii"] = function() {
-              return (Module["dynCall_viijii"] = Module["asm"]["ka"]).apply(null, arguments);
-            };
-            Module["dynCall_iiiiiijj"] = function() {
-              return (Module["dynCall_iiiiiijj"] = Module["asm"]["la"]).apply(null, arguments);
+              return (Module["dynCall_viijii"] = Module["asm"]["ja"]).apply(null, arguments);
             };
             Module["dynCall_iiiiij"] = function() {
-              return (Module["dynCall_iiiiij"] = Module["asm"]["ma"]).apply(null, arguments);
+              return (Module["dynCall_iiiiij"] = Module["asm"]["ka"]).apply(null, arguments);
             };
             Module["dynCall_iiiiijj"] = function() {
-              return (Module["dynCall_iiiiijj"] = Module["asm"]["na"]).apply(null, arguments);
+              return (Module["dynCall_iiiiijj"] = Module["asm"]["la"]).apply(null, arguments);
+            };
+            Module["dynCall_iiiiiijj"] = function() {
+              return (Module["dynCall_iiiiiijj"] = Module["asm"]["ma"]).apply(null, arguments);
             };
             Module["addRunDependency"] = addRunDependency;
             Module["removeRunDependency"] = removeRunDependency;
@@ -57729,19 +57793,15 @@
                 var ret = entryFunction(argc, argv);
                 exit(ret, true);
               } catch (e) {
-                if (e instanceof ExitStatus) {
+                if (e instanceof ExitStatus || e == "unwind") {
                   return;
-                } else if (e == "unwind") {
-                  noExitRuntime = true;
-                  return;
-                } else {
-                  var toLog = e;
-                  if (e && typeof e === "object" && e.stack) {
-                    toLog = [e, e.stack];
-                  }
-                  err("exception thrown: " + toLog);
-                  quit_(1, e);
                 }
+                var toLog = e;
+                if (e && typeof e === "object" && e.stack) {
+                  toLog = [e, e.stack];
+                }
+                err("exception thrown: " + toLog);
+                quit_(1, e);
               } finally {
               }
             }
@@ -57750,8 +57810,9 @@
                 return;
               }
               preRun();
-              if (runDependencies > 0)
+              if (runDependencies > 0) {
                 return;
+              }
               function doRun() {
                 if (calledRun)
                   return;
@@ -57782,10 +57843,7 @@
             }
             Module["run"] = run;
             function exit(status, implicit) {
-              if (implicit && noExitRuntime && status === 0) {
-                return;
-              }
-              if (noExitRuntime) ; else {
+              if (keepRuntimeAlive()) ; else {
                 if (Module["onExit"])
                   Module["onExit"](status);
                 ABORT = true;
@@ -57802,7 +57860,6 @@
             var shouldRunNow = true;
             if (Module["noInitialRun"])
               shouldRunNow = false;
-            noExitRuntime = true;
             run();
             return WebIFCWasm3.ready;
           };
@@ -89412,6 +89469,826 @@
       3009204131: "IFCGRID"
     };
 
+    // dist/helpers/types-map.ts
+    var IfcTypesMap$1 = {
+      3821786052: "IFCACTIONREQUEST",
+      2296667514: "IFCACTOR",
+      3630933823: "IFCACTORROLE",
+      4288193352: "IFCACTUATOR",
+      2874132201: "IFCACTUATORTYPE",
+      618182010: "IFCADDRESS",
+      1635779807: "IFCADVANCEDBREP",
+      2603310189: "IFCADVANCEDBREPWITHVOIDS",
+      3406155212: "IFCADVANCEDFACE",
+      1634111441: "IFCAIRTERMINAL",
+      177149247: "IFCAIRTERMINALBOX",
+      1411407467: "IFCAIRTERMINALBOXTYPE",
+      3352864051: "IFCAIRTERMINALTYPE",
+      2056796094: "IFCAIRTOAIRHEATRECOVERY",
+      1871374353: "IFCAIRTOAIRHEATRECOVERYTYPE",
+      3087945054: "IFCALARM",
+      3001207471: "IFCALARMTYPE",
+      325726236: "IFCALIGNMENT",
+      749761778: "IFCALIGNMENT2DHORIZONTAL",
+      3199563722: "IFCALIGNMENT2DHORIZONTALSEGMENT",
+      2483840362: "IFCALIGNMENT2DSEGMENT",
+      3379348081: "IFCALIGNMENT2DVERSEGCIRCULARARC",
+      3239324667: "IFCALIGNMENT2DVERSEGLINE",
+      4263986512: "IFCALIGNMENT2DVERSEGPARABOLICARC",
+      53199957: "IFCALIGNMENT2DVERTICAL",
+      2029264950: "IFCALIGNMENT2DVERTICALSEGMENT",
+      3512275521: "IFCALIGNMENTCURVE",
+      1674181508: "IFCANNOTATION",
+      669184980: "IFCANNOTATIONFILLAREA",
+      639542469: "IFCAPPLICATION",
+      411424972: "IFCAPPLIEDVALUE",
+      130549933: "IFCAPPROVAL",
+      3869604511: "IFCAPPROVALRELATIONSHIP",
+      3798115385: "IFCARBITRARYCLOSEDPROFILEDEF",
+      1310608509: "IFCARBITRARYOPENPROFILEDEF",
+      2705031697: "IFCARBITRARYPROFILEDEFWITHVOIDS",
+      3460190687: "IFCASSET",
+      3207858831: "IFCASYMMETRICISHAPEPROFILEDEF",
+      277319702: "IFCAUDIOVISUALAPPLIANCE",
+      1532957894: "IFCAUDIOVISUALAPPLIANCETYPE",
+      4261334040: "IFCAXIS1PLACEMENT",
+      3125803723: "IFCAXIS2PLACEMENT2D",
+      2740243338: "IFCAXIS2PLACEMENT3D",
+      1967976161: "IFCBSPLINECURVE",
+      2461110595: "IFCBSPLINECURVEWITHKNOTS",
+      2887950389: "IFCBSPLINESURFACE",
+      167062518: "IFCBSPLINESURFACEWITHKNOTS",
+      753842376: "IFCBEAM",
+      2906023776: "IFCBEAMSTANDARDCASE",
+      819618141: "IFCBEAMTYPE",
+      4196446775: "IFCBEARING",
+      3649138523: "IFCBEARINGTYPE",
+      616511568: "IFCBLOBTEXTURE",
+      1334484129: "IFCBLOCK",
+      32344328: "IFCBOILER",
+      231477066: "IFCBOILERTYPE",
+      3649129432: "IFCBOOLEANCLIPPINGRESULT",
+      2736907675: "IFCBOOLEANRESULT",
+      4037036970: "IFCBOUNDARYCONDITION",
+      1136057603: "IFCBOUNDARYCURVE",
+      1560379544: "IFCBOUNDARYEDGECONDITION",
+      3367102660: "IFCBOUNDARYFACECONDITION",
+      1387855156: "IFCBOUNDARYNODECONDITION",
+      2069777674: "IFCBOUNDARYNODECONDITIONWARPING",
+      1260505505: "IFCBOUNDEDCURVE",
+      4182860854: "IFCBOUNDEDSURFACE",
+      2581212453: "IFCBOUNDINGBOX",
+      2713105998: "IFCBOXEDHALFSPACE",
+      644574406: "IFCBRIDGE",
+      963979645: "IFCBRIDGEPART",
+      4031249490: "IFCBUILDING",
+      3299480353: "IFCBUILDINGELEMENT",
+      2979338954: "IFCBUILDINGELEMENTPART",
+      39481116: "IFCBUILDINGELEMENTPARTTYPE",
+      1095909175: "IFCBUILDINGELEMENTPROXY",
+      1909888760: "IFCBUILDINGELEMENTPROXYTYPE",
+      1950629157: "IFCBUILDINGELEMENTTYPE",
+      3124254112: "IFCBUILDINGSTOREY",
+      1177604601: "IFCBUILDINGSYSTEM",
+      2938176219: "IFCBURNER",
+      2188180465: "IFCBURNERTYPE",
+      2898889636: "IFCCSHAPEPROFILEDEF",
+      635142910: "IFCCABLECARRIERFITTING",
+      395041908: "IFCCABLECARRIERFITTINGTYPE",
+      3758799889: "IFCCABLECARRIERSEGMENT",
+      3293546465: "IFCCABLECARRIERSEGMENTTYPE",
+      1051757585: "IFCCABLEFITTING",
+      2674252688: "IFCCABLEFITTINGTYPE",
+      4217484030: "IFCCABLESEGMENT",
+      1285652485: "IFCCABLESEGMENTTYPE",
+      3999819293: "IFCCAISSONFOUNDATION",
+      3203706013: "IFCCAISSONFOUNDATIONTYPE",
+      1123145078: "IFCCARTESIANPOINT",
+      574549367: "IFCCARTESIANPOINTLIST",
+      1675464909: "IFCCARTESIANPOINTLIST2D",
+      2059837836: "IFCCARTESIANPOINTLIST3D",
+      59481748: "IFCCARTESIANTRANSFORMATIONOPERATOR",
+      3749851601: "IFCCARTESIANTRANSFORMATIONOPERATOR2D",
+      3486308946: "IFCCARTESIANTRANSFORMATIONOPERATOR2DNONUNIFORM",
+      3331915920: "IFCCARTESIANTRANSFORMATIONOPERATOR3D",
+      1416205885: "IFCCARTESIANTRANSFORMATIONOPERATOR3DNONUNIFORM",
+      3150382593: "IFCCENTERLINEPROFILEDEF",
+      3902619387: "IFCCHILLER",
+      2951183804: "IFCCHILLERTYPE",
+      3296154744: "IFCCHIMNEY",
+      2197970202: "IFCCHIMNEYTYPE",
+      2611217952: "IFCCIRCLE",
+      2937912522: "IFCCIRCLEHOLLOWPROFILEDEF",
+      1383045692: "IFCCIRCLEPROFILEDEF",
+      1062206242: "IFCCIRCULARARCSEGMENT2D",
+      1677625105: "IFCCIVILELEMENT",
+      3893394355: "IFCCIVILELEMENTTYPE",
+      747523909: "IFCCLASSIFICATION",
+      647927063: "IFCCLASSIFICATIONREFERENCE",
+      2205249479: "IFCCLOSEDSHELL",
+      639361253: "IFCCOIL",
+      2301859152: "IFCCOILTYPE",
+      776857604: "IFCCOLOURRGB",
+      3285139300: "IFCCOLOURRGBLIST",
+      3264961684: "IFCCOLOURSPECIFICATION",
+      843113511: "IFCCOLUMN",
+      905975707: "IFCCOLUMNSTANDARDCASE",
+      300633059: "IFCCOLUMNTYPE",
+      3221913625: "IFCCOMMUNICATIONSAPPLIANCE",
+      400855858: "IFCCOMMUNICATIONSAPPLIANCETYPE",
+      2542286263: "IFCCOMPLEXPROPERTY",
+      3875453745: "IFCCOMPLEXPROPERTYTEMPLATE",
+      3732776249: "IFCCOMPOSITECURVE",
+      15328376: "IFCCOMPOSITECURVEONSURFACE",
+      2485617015: "IFCCOMPOSITECURVESEGMENT",
+      1485152156: "IFCCOMPOSITEPROFILEDEF",
+      3571504051: "IFCCOMPRESSOR",
+      3850581409: "IFCCOMPRESSORTYPE",
+      2272882330: "IFCCONDENSER",
+      2816379211: "IFCCONDENSERTYPE",
+      2510884976: "IFCCONIC",
+      370225590: "IFCCONNECTEDFACESET",
+      1981873012: "IFCCONNECTIONCURVEGEOMETRY",
+      2859738748: "IFCCONNECTIONGEOMETRY",
+      45288368: "IFCCONNECTIONPOINTECCENTRICITY",
+      2614616156: "IFCCONNECTIONPOINTGEOMETRY",
+      2732653382: "IFCCONNECTIONSURFACEGEOMETRY",
+      775493141: "IFCCONNECTIONVOLUMEGEOMETRY",
+      1959218052: "IFCCONSTRAINT",
+      3898045240: "IFCCONSTRUCTIONEQUIPMENTRESOURCE",
+      2185764099: "IFCCONSTRUCTIONEQUIPMENTRESOURCETYPE",
+      1060000209: "IFCCONSTRUCTIONMATERIALRESOURCE",
+      4105962743: "IFCCONSTRUCTIONMATERIALRESOURCETYPE",
+      488727124: "IFCCONSTRUCTIONPRODUCTRESOURCE",
+      1525564444: "IFCCONSTRUCTIONPRODUCTRESOURCETYPE",
+      2559216714: "IFCCONSTRUCTIONRESOURCE",
+      2574617495: "IFCCONSTRUCTIONRESOURCETYPE",
+      3419103109: "IFCCONTEXT",
+      3050246964: "IFCCONTEXTDEPENDENTUNIT",
+      3293443760: "IFCCONTROL",
+      25142252: "IFCCONTROLLER",
+      578613899: "IFCCONTROLLERTYPE",
+      2889183280: "IFCCONVERSIONBASEDUNIT",
+      2713554722: "IFCCONVERSIONBASEDUNITWITHOFFSET",
+      4136498852: "IFCCOOLEDBEAM",
+      335055490: "IFCCOOLEDBEAMTYPE",
+      3640358203: "IFCCOOLINGTOWER",
+      2954562838: "IFCCOOLINGTOWERTYPE",
+      1785450214: "IFCCOORDINATEOPERATION",
+      1466758467: "IFCCOORDINATEREFERENCESYSTEM",
+      3895139033: "IFCCOSTITEM",
+      1419761937: "IFCCOSTSCHEDULE",
+      602808272: "IFCCOSTVALUE",
+      1973544240: "IFCCOVERING",
+      1916426348: "IFCCOVERINGTYPE",
+      3295246426: "IFCCREWRESOURCE",
+      1815067380: "IFCCREWRESOURCETYPE",
+      2506170314: "IFCCSGPRIMITIVE3D",
+      2147822146: "IFCCSGSOLID",
+      539742890: "IFCCURRENCYRELATIONSHIP",
+      3495092785: "IFCCURTAINWALL",
+      1457835157: "IFCCURTAINWALLTYPE",
+      2601014836: "IFCCURVE",
+      2827736869: "IFCCURVEBOUNDEDPLANE",
+      2629017746: "IFCCURVEBOUNDEDSURFACE",
+      1186437898: "IFCCURVESEGMENT2D",
+      3800577675: "IFCCURVESTYLE",
+      1105321065: "IFCCURVESTYLEFONT",
+      2367409068: "IFCCURVESTYLEFONTANDSCALING",
+      3510044353: "IFCCURVESTYLEFONTPATTERN",
+      1213902940: "IFCCYLINDRICALSURFACE",
+      4074379575: "IFCDAMPER",
+      3961806047: "IFCDAMPERTYPE",
+      3426335179: "IFCDEEPFOUNDATION",
+      1306400036: "IFCDEEPFOUNDATIONTYPE",
+      3632507154: "IFCDERIVEDPROFILEDEF",
+      1765591967: "IFCDERIVEDUNIT",
+      1045800335: "IFCDERIVEDUNITELEMENT",
+      2949456006: "IFCDIMENSIONALEXPONENTS",
+      32440307: "IFCDIRECTION",
+      1335981549: "IFCDISCRETEACCESSORY",
+      2635815018: "IFCDISCRETEACCESSORYTYPE",
+      1945343521: "IFCDISTANCEEXPRESSION",
+      1052013943: "IFCDISTRIBUTIONCHAMBERELEMENT",
+      1599208980: "IFCDISTRIBUTIONCHAMBERELEMENTTYPE",
+      562808652: "IFCDISTRIBUTIONCIRCUIT",
+      1062813311: "IFCDISTRIBUTIONCONTROLELEMENT",
+      2063403501: "IFCDISTRIBUTIONCONTROLELEMENTTYPE",
+      1945004755: "IFCDISTRIBUTIONELEMENT",
+      3256556792: "IFCDISTRIBUTIONELEMENTTYPE",
+      3040386961: "IFCDISTRIBUTIONFLOWELEMENT",
+      3849074793: "IFCDISTRIBUTIONFLOWELEMENTTYPE",
+      3041715199: "IFCDISTRIBUTIONPORT",
+      3205830791: "IFCDISTRIBUTIONSYSTEM",
+      1154170062: "IFCDOCUMENTINFORMATION",
+      770865208: "IFCDOCUMENTINFORMATIONRELATIONSHIP",
+      3732053477: "IFCDOCUMENTREFERENCE",
+      395920057: "IFCDOOR",
+      2963535650: "IFCDOORLININGPROPERTIES",
+      1714330368: "IFCDOORPANELPROPERTIES",
+      3242481149: "IFCDOORSTANDARDCASE",
+      526551008: "IFCDOORSTYLE",
+      2323601079: "IFCDOORTYPE",
+      445594917: "IFCDRAUGHTINGPREDEFINEDCOLOUR",
+      4006246654: "IFCDRAUGHTINGPREDEFINEDCURVEFONT",
+      342316401: "IFCDUCTFITTING",
+      869906466: "IFCDUCTFITTINGTYPE",
+      3518393246: "IFCDUCTSEGMENT",
+      3760055223: "IFCDUCTSEGMENTTYPE",
+      1360408905: "IFCDUCTSILENCER",
+      2030761528: "IFCDUCTSILENCERTYPE",
+      3900360178: "IFCEDGE",
+      476780140: "IFCEDGECURVE",
+      1472233963: "IFCEDGELOOP",
+      1904799276: "IFCELECTRICAPPLIANCE",
+      663422040: "IFCELECTRICAPPLIANCETYPE",
+      862014818: "IFCELECTRICDISTRIBUTIONBOARD",
+      2417008758: "IFCELECTRICDISTRIBUTIONBOARDTYPE",
+      3310460725: "IFCELECTRICFLOWSTORAGEDEVICE",
+      3277789161: "IFCELECTRICFLOWSTORAGEDEVICETYPE",
+      264262732: "IFCELECTRICGENERATOR",
+      1534661035: "IFCELECTRICGENERATORTYPE",
+      402227799: "IFCELECTRICMOTOR",
+      1217240411: "IFCELECTRICMOTORTYPE",
+      1003880860: "IFCELECTRICTIMECONTROL",
+      712377611: "IFCELECTRICTIMECONTROLTYPE",
+      1758889154: "IFCELEMENT",
+      4123344466: "IFCELEMENTASSEMBLY",
+      2397081782: "IFCELEMENTASSEMBLYTYPE",
+      1623761950: "IFCELEMENTCOMPONENT",
+      2590856083: "IFCELEMENTCOMPONENTTYPE",
+      1883228015: "IFCELEMENTQUANTITY",
+      339256511: "IFCELEMENTTYPE",
+      2777663545: "IFCELEMENTARYSURFACE",
+      1704287377: "IFCELLIPSE",
+      2835456948: "IFCELLIPSEPROFILEDEF",
+      1658829314: "IFCENERGYCONVERSIONDEVICE",
+      2107101300: "IFCENERGYCONVERSIONDEVICETYPE",
+      2814081492: "IFCENGINE",
+      132023988: "IFCENGINETYPE",
+      3747195512: "IFCEVAPORATIVECOOLER",
+      3174744832: "IFCEVAPORATIVECOOLERTYPE",
+      484807127: "IFCEVAPORATOR",
+      3390157468: "IFCEVAPORATORTYPE",
+      4148101412: "IFCEVENT",
+      211053100: "IFCEVENTTIME",
+      4024345920: "IFCEVENTTYPE",
+      297599258: "IFCEXTENDEDPROPERTIES",
+      4294318154: "IFCEXTERNALINFORMATION",
+      3200245327: "IFCEXTERNALREFERENCE",
+      1437805879: "IFCEXTERNALREFERENCERELATIONSHIP",
+      1209101575: "IFCEXTERNALSPATIALELEMENT",
+      2853485674: "IFCEXTERNALSPATIALSTRUCTUREELEMENT",
+      2242383968: "IFCEXTERNALLYDEFINEDHATCHSTYLE",
+      1040185647: "IFCEXTERNALLYDEFINEDSURFACESTYLE",
+      3548104201: "IFCEXTERNALLYDEFINEDTEXTFONT",
+      477187591: "IFCEXTRUDEDAREASOLID",
+      2804161546: "IFCEXTRUDEDAREASOLIDTAPERED",
+      2556980723: "IFCFACE",
+      2047409740: "IFCFACEBASEDSURFACEMODEL",
+      1809719519: "IFCFACEBOUND",
+      803316827: "IFCFACEOUTERBOUND",
+      3008276851: "IFCFACESURFACE",
+      807026263: "IFCFACETEDBREP",
+      3737207727: "IFCFACETEDBREPWITHVOIDS",
+      24185140: "IFCFACILITY",
+      1310830890: "IFCFACILITYPART",
+      4219587988: "IFCFAILURECONNECTIONCONDITION",
+      3415622556: "IFCFAN",
+      346874300: "IFCFANTYPE",
+      647756555: "IFCFASTENER",
+      2489546625: "IFCFASTENERTYPE",
+      2827207264: "IFCFEATUREELEMENT",
+      2143335405: "IFCFEATUREELEMENTADDITION",
+      1287392070: "IFCFEATUREELEMENTSUBTRACTION",
+      738692330: "IFCFILLAREASTYLE",
+      374418227: "IFCFILLAREASTYLEHATCHING",
+      315944413: "IFCFILLAREASTYLETILES",
+      819412036: "IFCFILTER",
+      1810631287: "IFCFILTERTYPE",
+      1426591983: "IFCFIRESUPPRESSIONTERMINAL",
+      4222183408: "IFCFIRESUPPRESSIONTERMINALTYPE",
+      2652556860: "IFCFIXEDREFERENCESWEPTAREASOLID",
+      2058353004: "IFCFLOWCONTROLLER",
+      3907093117: "IFCFLOWCONTROLLERTYPE",
+      4278956645: "IFCFLOWFITTING",
+      3198132628: "IFCFLOWFITTINGTYPE",
+      182646315: "IFCFLOWINSTRUMENT",
+      4037862832: "IFCFLOWINSTRUMENTTYPE",
+      2188021234: "IFCFLOWMETER",
+      3815607619: "IFCFLOWMETERTYPE",
+      3132237377: "IFCFLOWMOVINGDEVICE",
+      1482959167: "IFCFLOWMOVINGDEVICETYPE",
+      987401354: "IFCFLOWSEGMENT",
+      1834744321: "IFCFLOWSEGMENTTYPE",
+      707683696: "IFCFLOWSTORAGEDEVICE",
+      1339347760: "IFCFLOWSTORAGEDEVICETYPE",
+      2223149337: "IFCFLOWTERMINAL",
+      2297155007: "IFCFLOWTERMINALTYPE",
+      3508470533: "IFCFLOWTREATMENTDEVICE",
+      3009222698: "IFCFLOWTREATMENTDEVICETYPE",
+      900683007: "IFCFOOTING",
+      1893162501: "IFCFOOTINGTYPE",
+      263784265: "IFCFURNISHINGELEMENT",
+      4238390223: "IFCFURNISHINGELEMENTTYPE",
+      1509553395: "IFCFURNITURE",
+      1268542332: "IFCFURNITURETYPE",
+      3493046030: "IFCGEOGRAPHICELEMENT",
+      4095422895: "IFCGEOGRAPHICELEMENTTYPE",
+      987898635: "IFCGEOMETRICCURVESET",
+      3448662350: "IFCGEOMETRICREPRESENTATIONCONTEXT",
+      2453401579: "IFCGEOMETRICREPRESENTATIONITEM",
+      4142052618: "IFCGEOMETRICREPRESENTATIONSUBCONTEXT",
+      3590301190: "IFCGEOMETRICSET",
+      3009204131: "IFCGRID",
+      852622518: "IFCGRIDAXIS",
+      178086475: "IFCGRIDPLACEMENT",
+      2706460486: "IFCGROUP",
+      812098782: "IFCHALFSPACESOLID",
+      3319311131: "IFCHEATEXCHANGER",
+      1251058090: "IFCHEATEXCHANGERTYPE",
+      2068733104: "IFCHUMIDIFIER",
+      1806887404: "IFCHUMIDIFIERTYPE",
+      1484403080: "IFCISHAPEPROFILEDEF",
+      3905492369: "IFCIMAGETEXTURE",
+      3570813810: "IFCINDEXEDCOLOURMAP",
+      2571569899: "IFCINDEXEDPOLYCURVE",
+      178912537: "IFCINDEXEDPOLYGONALFACE",
+      2294589976: "IFCINDEXEDPOLYGONALFACEWITHVOIDS",
+      1437953363: "IFCINDEXEDTEXTUREMAP",
+      2133299955: "IFCINDEXEDTRIANGLETEXTUREMAP",
+      4175244083: "IFCINTERCEPTOR",
+      3946677679: "IFCINTERCEPTORTYPE",
+      3113134337: "IFCINTERSECTIONCURVE",
+      2391368822: "IFCINVENTORY",
+      3741457305: "IFCIRREGULARTIMESERIES",
+      3020489413: "IFCIRREGULARTIMESERIESVALUE",
+      2176052936: "IFCJUNCTIONBOX",
+      4288270099: "IFCJUNCTIONBOXTYPE",
+      572779678: "IFCLSHAPEPROFILEDEF",
+      3827777499: "IFCLABORRESOURCE",
+      428585644: "IFCLABORRESOURCETYPE",
+      1585845231: "IFCLAGTIME",
+      76236018: "IFCLAMP",
+      1051575348: "IFCLAMPTYPE",
+      2655187982: "IFCLIBRARYINFORMATION",
+      3452421091: "IFCLIBRARYREFERENCE",
+      4162380809: "IFCLIGHTDISTRIBUTIONDATA",
+      629592764: "IFCLIGHTFIXTURE",
+      1161773419: "IFCLIGHTFIXTURETYPE",
+      1566485204: "IFCLIGHTINTENSITYDISTRIBUTION",
+      1402838566: "IFCLIGHTSOURCE",
+      125510826: "IFCLIGHTSOURCEAMBIENT",
+      2604431987: "IFCLIGHTSOURCEDIRECTIONAL",
+      4266656042: "IFCLIGHTSOURCEGONIOMETRIC",
+      1520743889: "IFCLIGHTSOURCEPOSITIONAL",
+      3422422726: "IFCLIGHTSOURCESPOT",
+      1281925730: "IFCLINE",
+      3092502836: "IFCLINESEGMENT2D",
+      388784114: "IFCLINEARPLACEMENT",
+      1154579445: "IFCLINEARPOSITIONINGELEMENT",
+      2624227202: "IFCLOCALPLACEMENT",
+      1008929658: "IFCLOOP",
+      1425443689: "IFCMANIFOLDSOLIDBREP",
+      3057273783: "IFCMAPCONVERSION",
+      2347385850: "IFCMAPPEDITEM",
+      1838606355: "IFCMATERIAL",
+      1847130766: "IFCMATERIALCLASSIFICATIONRELATIONSHIP",
+      3708119e3: "IFCMATERIALCONSTITUENT",
+      2852063980: "IFCMATERIALCONSTITUENTSET",
+      760658860: "IFCMATERIALDEFINITION",
+      2022407955: "IFCMATERIALDEFINITIONREPRESENTATION",
+      248100487: "IFCMATERIALLAYER",
+      3303938423: "IFCMATERIALLAYERSET",
+      1303795690: "IFCMATERIALLAYERSETUSAGE",
+      1847252529: "IFCMATERIALLAYERWITHOFFSETS",
+      2199411900: "IFCMATERIALLIST",
+      2235152071: "IFCMATERIALPROFILE",
+      164193824: "IFCMATERIALPROFILESET",
+      3079605661: "IFCMATERIALPROFILESETUSAGE",
+      3404854881: "IFCMATERIALPROFILESETUSAGETAPERING",
+      552965576: "IFCMATERIALPROFILEWITHOFFSETS",
+      3265635763: "IFCMATERIALPROPERTIES",
+      853536259: "IFCMATERIALRELATIONSHIP",
+      1507914824: "IFCMATERIALUSAGEDEFINITION",
+      2597039031: "IFCMEASUREWITHUNIT",
+      377706215: "IFCMECHANICALFASTENER",
+      2108223431: "IFCMECHANICALFASTENERTYPE",
+      1437502449: "IFCMEDICALDEVICE",
+      1114901282: "IFCMEDICALDEVICETYPE",
+      1073191201: "IFCMEMBER",
+      1911478936: "IFCMEMBERSTANDARDCASE",
+      3181161470: "IFCMEMBERTYPE",
+      3368373690: "IFCMETRIC",
+      2998442950: "IFCMIRROREDPROFILEDEF",
+      2706619895: "IFCMONETARYUNIT",
+      2474470126: "IFCMOTORCONNECTION",
+      977012517: "IFCMOTORCONNECTIONTYPE",
+      1918398963: "IFCNAMEDUNIT",
+      3888040117: "IFCOBJECT",
+      219451334: "IFCOBJECTDEFINITION",
+      3701648758: "IFCOBJECTPLACEMENT",
+      2251480897: "IFCOBJECTIVE",
+      4143007308: "IFCOCCUPANT",
+      590820931: "IFCOFFSETCURVE",
+      3388369263: "IFCOFFSETCURVE2D",
+      3505215534: "IFCOFFSETCURVE3D",
+      2485787929: "IFCOFFSETCURVEBYDISTANCES",
+      2665983363: "IFCOPENSHELL",
+      3588315303: "IFCOPENINGELEMENT",
+      3079942009: "IFCOPENINGSTANDARDCASE",
+      4251960020: "IFCORGANIZATION",
+      1411181986: "IFCORGANIZATIONRELATIONSHIP",
+      643959842: "IFCORIENTATIONEXPRESSION",
+      1029017970: "IFCORIENTEDEDGE",
+      144952367: "IFCOUTERBOUNDARYCURVE",
+      3694346114: "IFCOUTLET",
+      2837617999: "IFCOUTLETTYPE",
+      1207048766: "IFCOWNERHISTORY",
+      2529465313: "IFCPARAMETERIZEDPROFILEDEF",
+      2519244187: "IFCPATH",
+      1682466193: "IFCPCURVE",
+      2382730787: "IFCPERFORMANCEHISTORY",
+      3566463478: "IFCPERMEABLECOVERINGPROPERTIES",
+      3327091369: "IFCPERMIT",
+      2077209135: "IFCPERSON",
+      101040310: "IFCPERSONANDORGANIZATION",
+      3021840470: "IFCPHYSICALCOMPLEXQUANTITY",
+      2483315170: "IFCPHYSICALQUANTITY",
+      2226359599: "IFCPHYSICALSIMPLEQUANTITY",
+      1687234759: "IFCPILE",
+      1158309216: "IFCPILETYPE",
+      310824031: "IFCPIPEFITTING",
+      804291784: "IFCPIPEFITTINGTYPE",
+      3612865200: "IFCPIPESEGMENT",
+      4231323485: "IFCPIPESEGMENTTYPE",
+      597895409: "IFCPIXELTEXTURE",
+      2004835150: "IFCPLACEMENT",
+      603570806: "IFCPLANARBOX",
+      1663979128: "IFCPLANAREXTENT",
+      220341763: "IFCPLANE",
+      3171933400: "IFCPLATE",
+      1156407060: "IFCPLATESTANDARDCASE",
+      4017108033: "IFCPLATETYPE",
+      2067069095: "IFCPOINT",
+      4022376103: "IFCPOINTONCURVE",
+      1423911732: "IFCPOINTONSURFACE",
+      2924175390: "IFCPOLYLOOP",
+      2775532180: "IFCPOLYGONALBOUNDEDHALFSPACE",
+      2839578677: "IFCPOLYGONALFACESET",
+      3724593414: "IFCPOLYLINE",
+      3740093272: "IFCPORT",
+      1946335990: "IFCPOSITIONINGELEMENT",
+      3355820592: "IFCPOSTALADDRESS",
+      759155922: "IFCPREDEFINEDCOLOUR",
+      2559016684: "IFCPREDEFINEDCURVEFONT",
+      3727388367: "IFCPREDEFINEDITEM",
+      3778827333: "IFCPREDEFINEDPROPERTIES",
+      3967405729: "IFCPREDEFINEDPROPERTYSET",
+      1775413392: "IFCPREDEFINEDTEXTFONT",
+      677532197: "IFCPRESENTATIONITEM",
+      2022622350: "IFCPRESENTATIONLAYERASSIGNMENT",
+      1304840413: "IFCPRESENTATIONLAYERWITHSTYLE",
+      3119450353: "IFCPRESENTATIONSTYLE",
+      2417041796: "IFCPRESENTATIONSTYLEASSIGNMENT",
+      2744685151: "IFCPROCEDURE",
+      569719735: "IFCPROCEDURETYPE",
+      2945172077: "IFCPROCESS",
+      4208778838: "IFCPRODUCT",
+      673634403: "IFCPRODUCTDEFINITIONSHAPE",
+      2095639259: "IFCPRODUCTREPRESENTATION",
+      3958567839: "IFCPROFILEDEF",
+      2802850158: "IFCPROFILEPROPERTIES",
+      103090709: "IFCPROJECT",
+      653396225: "IFCPROJECTLIBRARY",
+      2904328755: "IFCPROJECTORDER",
+      3843373140: "IFCPROJECTEDCRS",
+      3651124850: "IFCPROJECTIONELEMENT",
+      2598011224: "IFCPROPERTY",
+      986844984: "IFCPROPERTYABSTRACTION",
+      871118103: "IFCPROPERTYBOUNDEDVALUE",
+      1680319473: "IFCPROPERTYDEFINITION",
+      148025276: "IFCPROPERTYDEPENDENCYRELATIONSHIP",
+      4166981789: "IFCPROPERTYENUMERATEDVALUE",
+      3710013099: "IFCPROPERTYENUMERATION",
+      2752243245: "IFCPROPERTYLISTVALUE",
+      941946838: "IFCPROPERTYREFERENCEVALUE",
+      1451395588: "IFCPROPERTYSET",
+      3357820518: "IFCPROPERTYSETDEFINITION",
+      492091185: "IFCPROPERTYSETTEMPLATE",
+      3650150729: "IFCPROPERTYSINGLEVALUE",
+      110355661: "IFCPROPERTYTABLEVALUE",
+      3521284610: "IFCPROPERTYTEMPLATE",
+      1482703590: "IFCPROPERTYTEMPLATEDEFINITION",
+      738039164: "IFCPROTECTIVEDEVICE",
+      2295281155: "IFCPROTECTIVEDEVICETRIPPINGUNIT",
+      655969474: "IFCPROTECTIVEDEVICETRIPPINGUNITTYPE",
+      1842657554: "IFCPROTECTIVEDEVICETYPE",
+      3219374653: "IFCPROXY",
+      90941305: "IFCPUMP",
+      2250791053: "IFCPUMPTYPE",
+      2044713172: "IFCQUANTITYAREA",
+      2093928680: "IFCQUANTITYCOUNT",
+      931644368: "IFCQUANTITYLENGTH",
+      2090586900: "IFCQUANTITYSET",
+      3252649465: "IFCQUANTITYTIME",
+      2405470396: "IFCQUANTITYVOLUME",
+      825690147: "IFCQUANTITYWEIGHT",
+      2262370178: "IFCRAILING",
+      2893384427: "IFCRAILINGTYPE",
+      3024970846: "IFCRAMP",
+      3283111854: "IFCRAMPFLIGHT",
+      2324767716: "IFCRAMPFLIGHTTYPE",
+      1469900589: "IFCRAMPTYPE",
+      1232101972: "IFCRATIONALBSPLINECURVEWITHKNOTS",
+      683857671: "IFCRATIONALBSPLINESURFACEWITHKNOTS",
+      2770003689: "IFCRECTANGLEHOLLOWPROFILEDEF",
+      3615266464: "IFCRECTANGLEPROFILEDEF",
+      2798486643: "IFCRECTANGULARPYRAMID",
+      3454111270: "IFCRECTANGULARTRIMMEDSURFACE",
+      3915482550: "IFCRECURRENCEPATTERN",
+      2433181523: "IFCREFERENCE",
+      4021432810: "IFCREFERENT",
+      3413951693: "IFCREGULARTIMESERIES",
+      1580146022: "IFCREINFORCEMENTBARPROPERTIES",
+      3765753017: "IFCREINFORCEMENTDEFINITIONPROPERTIES",
+      979691226: "IFCREINFORCINGBAR",
+      2572171363: "IFCREINFORCINGBARTYPE",
+      3027567501: "IFCREINFORCINGELEMENT",
+      964333572: "IFCREINFORCINGELEMENTTYPE",
+      2320036040: "IFCREINFORCINGMESH",
+      2310774935: "IFCREINFORCINGMESHTYPE",
+      160246688: "IFCRELAGGREGATES",
+      3939117080: "IFCRELASSIGNS",
+      1683148259: "IFCRELASSIGNSTOACTOR",
+      2495723537: "IFCRELASSIGNSTOCONTROL",
+      1307041759: "IFCRELASSIGNSTOGROUP",
+      1027710054: "IFCRELASSIGNSTOGROUPBYFACTOR",
+      4278684876: "IFCRELASSIGNSTOPROCESS",
+      2857406711: "IFCRELASSIGNSTOPRODUCT",
+      205026976: "IFCRELASSIGNSTORESOURCE",
+      1865459582: "IFCRELASSOCIATES",
+      4095574036: "IFCRELASSOCIATESAPPROVAL",
+      919958153: "IFCRELASSOCIATESCLASSIFICATION",
+      2728634034: "IFCRELASSOCIATESCONSTRAINT",
+      982818633: "IFCRELASSOCIATESDOCUMENT",
+      3840914261: "IFCRELASSOCIATESLIBRARY",
+      2655215786: "IFCRELASSOCIATESMATERIAL",
+      826625072: "IFCRELCONNECTS",
+      1204542856: "IFCRELCONNECTSELEMENTS",
+      3945020480: "IFCRELCONNECTSPATHELEMENTS",
+      4201705270: "IFCRELCONNECTSPORTTOELEMENT",
+      3190031847: "IFCRELCONNECTSPORTS",
+      2127690289: "IFCRELCONNECTSSTRUCTURALACTIVITY",
+      1638771189: "IFCRELCONNECTSSTRUCTURALMEMBER",
+      504942748: "IFCRELCONNECTSWITHECCENTRICITY",
+      3678494232: "IFCRELCONNECTSWITHREALIZINGELEMENTS",
+      3242617779: "IFCRELCONTAINEDINSPATIALSTRUCTURE",
+      886880790: "IFCRELCOVERSBLDGELEMENTS",
+      2802773753: "IFCRELCOVERSSPACES",
+      2565941209: "IFCRELDECLARES",
+      2551354335: "IFCRELDECOMPOSES",
+      693640335: "IFCRELDEFINES",
+      1462361463: "IFCRELDEFINESBYOBJECT",
+      4186316022: "IFCRELDEFINESBYPROPERTIES",
+      307848117: "IFCRELDEFINESBYTEMPLATE",
+      781010003: "IFCRELDEFINESBYTYPE",
+      3940055652: "IFCRELFILLSELEMENT",
+      279856033: "IFCRELFLOWCONTROLELEMENTS",
+      427948657: "IFCRELINTERFERESELEMENTS",
+      3268803585: "IFCRELNESTS",
+      1441486842: "IFCRELPOSITIONS",
+      750771296: "IFCRELPROJECTSELEMENT",
+      1245217292: "IFCRELREFERENCEDINSPATIALSTRUCTURE",
+      4122056220: "IFCRELSEQUENCE",
+      366585022: "IFCRELSERVICESBUILDINGS",
+      3451746338: "IFCRELSPACEBOUNDARY",
+      3523091289: "IFCRELSPACEBOUNDARY1STLEVEL",
+      1521410863: "IFCRELSPACEBOUNDARY2NDLEVEL",
+      1401173127: "IFCRELVOIDSELEMENT",
+      478536968: "IFCRELATIONSHIP",
+      816062949: "IFCREPARAMETRISEDCOMPOSITECURVESEGMENT",
+      1076942058: "IFCREPRESENTATION",
+      3377609919: "IFCREPRESENTATIONCONTEXT",
+      3008791417: "IFCREPRESENTATIONITEM",
+      1660063152: "IFCREPRESENTATIONMAP",
+      2914609552: "IFCRESOURCE",
+      2943643501: "IFCRESOURCEAPPROVALRELATIONSHIP",
+      1608871552: "IFCRESOURCECONSTRAINTRELATIONSHIP",
+      2439245199: "IFCRESOURCELEVELRELATIONSHIP",
+      1042787934: "IFCRESOURCETIME",
+      1856042241: "IFCREVOLVEDAREASOLID",
+      3243963512: "IFCREVOLVEDAREASOLIDTAPERED",
+      4158566097: "IFCRIGHTCIRCULARCONE",
+      3626867408: "IFCRIGHTCIRCULARCYLINDER",
+      2016517767: "IFCROOF",
+      2781568857: "IFCROOFTYPE",
+      2341007311: "IFCROOT",
+      2778083089: "IFCROUNDEDRECTANGLEPROFILEDEF",
+      448429030: "IFCSIUNIT",
+      3053780830: "IFCSANITARYTERMINAL",
+      1768891740: "IFCSANITARYTERMINALTYPE",
+      1054537805: "IFCSCHEDULINGTIME",
+      2157484638: "IFCSEAMCURVE",
+      2042790032: "IFCSECTIONPROPERTIES",
+      4165799628: "IFCSECTIONREINFORCEMENTPROPERTIES",
+      1862484736: "IFCSECTIONEDSOLID",
+      1290935644: "IFCSECTIONEDSOLIDHORIZONTAL",
+      1509187699: "IFCSECTIONEDSPINE",
+      4086658281: "IFCSENSOR",
+      1783015770: "IFCSENSORTYPE",
+      1329646415: "IFCSHADINGDEVICE",
+      4074543187: "IFCSHADINGDEVICETYPE",
+      867548509: "IFCSHAPEASPECT",
+      3982875396: "IFCSHAPEMODEL",
+      4240577450: "IFCSHAPEREPRESENTATION",
+      4124623270: "IFCSHELLBASEDSURFACEMODEL",
+      3692461612: "IFCSIMPLEPROPERTY",
+      3663146110: "IFCSIMPLEPROPERTYTEMPLATE",
+      4097777520: "IFCSITE",
+      1529196076: "IFCSLAB",
+      3127900445: "IFCSLABELEMENTEDCASE",
+      3027962421: "IFCSLABSTANDARDCASE",
+      2533589738: "IFCSLABTYPE",
+      2609359061: "IFCSLIPPAGECONNECTIONCONDITION",
+      3420628829: "IFCSOLARDEVICE",
+      1072016465: "IFCSOLARDEVICETYPE",
+      723233188: "IFCSOLIDMODEL",
+      3856911033: "IFCSPACE",
+      1999602285: "IFCSPACEHEATER",
+      1305183839: "IFCSPACEHEATERTYPE",
+      3812236995: "IFCSPACETYPE",
+      1412071761: "IFCSPATIALELEMENT",
+      710998568: "IFCSPATIALELEMENTTYPE",
+      2706606064: "IFCSPATIALSTRUCTUREELEMENT",
+      3893378262: "IFCSPATIALSTRUCTUREELEMENTTYPE",
+      463610769: "IFCSPATIALZONE",
+      2481509218: "IFCSPATIALZONETYPE",
+      451544542: "IFCSPHERE",
+      4015995234: "IFCSPHERICALSURFACE",
+      1404847402: "IFCSTACKTERMINAL",
+      3112655638: "IFCSTACKTERMINALTYPE",
+      331165859: "IFCSTAIR",
+      4252922144: "IFCSTAIRFLIGHT",
+      1039846685: "IFCSTAIRFLIGHTTYPE",
+      338393293: "IFCSTAIRTYPE",
+      682877961: "IFCSTRUCTURALACTION",
+      3544373492: "IFCSTRUCTURALACTIVITY",
+      2515109513: "IFCSTRUCTURALANALYSISMODEL",
+      1179482911: "IFCSTRUCTURALCONNECTION",
+      2273995522: "IFCSTRUCTURALCONNECTIONCONDITION",
+      1004757350: "IFCSTRUCTURALCURVEACTION",
+      4243806635: "IFCSTRUCTURALCURVECONNECTION",
+      214636428: "IFCSTRUCTURALCURVEMEMBER",
+      2445595289: "IFCSTRUCTURALCURVEMEMBERVARYING",
+      2757150158: "IFCSTRUCTURALCURVEREACTION",
+      3136571912: "IFCSTRUCTURALITEM",
+      1807405624: "IFCSTRUCTURALLINEARACTION",
+      2162789131: "IFCSTRUCTURALLOAD",
+      385403989: "IFCSTRUCTURALLOADCASE",
+      3478079324: "IFCSTRUCTURALLOADCONFIGURATION",
+      1252848954: "IFCSTRUCTURALLOADGROUP",
+      1595516126: "IFCSTRUCTURALLOADLINEARFORCE",
+      609421318: "IFCSTRUCTURALLOADORRESULT",
+      2668620305: "IFCSTRUCTURALLOADPLANARFORCE",
+      2473145415: "IFCSTRUCTURALLOADSINGLEDISPLACEMENT",
+      1973038258: "IFCSTRUCTURALLOADSINGLEDISPLACEMENTDISTORTION",
+      1597423693: "IFCSTRUCTURALLOADSINGLEFORCE",
+      1190533807: "IFCSTRUCTURALLOADSINGLEFORCEWARPING",
+      2525727697: "IFCSTRUCTURALLOADSTATIC",
+      3408363356: "IFCSTRUCTURALLOADTEMPERATURE",
+      530289379: "IFCSTRUCTURALMEMBER",
+      1621171031: "IFCSTRUCTURALPLANARACTION",
+      2082059205: "IFCSTRUCTURALPOINTACTION",
+      734778138: "IFCSTRUCTURALPOINTCONNECTION",
+      1235345126: "IFCSTRUCTURALPOINTREACTION",
+      3689010777: "IFCSTRUCTURALREACTION",
+      2986769608: "IFCSTRUCTURALRESULTGROUP",
+      3657597509: "IFCSTRUCTURALSURFACEACTION",
+      1975003073: "IFCSTRUCTURALSURFACECONNECTION",
+      3979015343: "IFCSTRUCTURALSURFACEMEMBER",
+      2218152070: "IFCSTRUCTURALSURFACEMEMBERVARYING",
+      603775116: "IFCSTRUCTURALSURFACEREACTION",
+      2830218821: "IFCSTYLEMODEL",
+      3958052878: "IFCSTYLEDITEM",
+      3049322572: "IFCSTYLEDREPRESENTATION",
+      148013059: "IFCSUBCONTRACTRESOURCE",
+      4095615324: "IFCSUBCONTRACTRESOURCETYPE",
+      2233826070: "IFCSUBEDGE",
+      2513912981: "IFCSURFACE",
+      699246055: "IFCSURFACECURVE",
+      2028607225: "IFCSURFACECURVESWEPTAREASOLID",
+      3101698114: "IFCSURFACEFEATURE",
+      2809605785: "IFCSURFACEOFLINEAREXTRUSION",
+      4124788165: "IFCSURFACEOFREVOLUTION",
+      2934153892: "IFCSURFACEREINFORCEMENTAREA",
+      1300840506: "IFCSURFACESTYLE",
+      3303107099: "IFCSURFACESTYLELIGHTING",
+      1607154358: "IFCSURFACESTYLEREFRACTION",
+      1878645084: "IFCSURFACESTYLERENDERING",
+      846575682: "IFCSURFACESTYLESHADING",
+      1351298697: "IFCSURFACESTYLEWITHTEXTURES",
+      626085974: "IFCSURFACETEXTURE",
+      2247615214: "IFCSWEPTAREASOLID",
+      1260650574: "IFCSWEPTDISKSOLID",
+      1096409881: "IFCSWEPTDISKSOLIDPOLYGONAL",
+      230924584: "IFCSWEPTSURFACE",
+      1162798199: "IFCSWITCHINGDEVICE",
+      2315554128: "IFCSWITCHINGDEVICETYPE",
+      2254336722: "IFCSYSTEM",
+      413509423: "IFCSYSTEMFURNITUREELEMENT",
+      1580310250: "IFCSYSTEMFURNITUREELEMENTTYPE",
+      3071757647: "IFCTSHAPEPROFILEDEF",
+      985171141: "IFCTABLE",
+      2043862942: "IFCTABLECOLUMN",
+      531007025: "IFCTABLEROW",
+      812556717: "IFCTANK",
+      5716631: "IFCTANKTYPE",
+      3473067441: "IFCTASK",
+      1549132990: "IFCTASKTIME",
+      2771591690: "IFCTASKTIMERECURRING",
+      3206491090: "IFCTASKTYPE",
+      912023232: "IFCTELECOMADDRESS",
+      3824725483: "IFCTENDON",
+      2347447852: "IFCTENDONANCHOR",
+      3081323446: "IFCTENDONANCHORTYPE",
+      3663046924: "IFCTENDONCONDUIT",
+      2281632017: "IFCTENDONCONDUITTYPE",
+      2415094496: "IFCTENDONTYPE",
+      2387106220: "IFCTESSELLATEDFACESET",
+      901063453: "IFCTESSELLATEDITEM",
+      4282788508: "IFCTEXTLITERAL",
+      3124975700: "IFCTEXTLITERALWITHEXTENT",
+      1447204868: "IFCTEXTSTYLE",
+      1983826977: "IFCTEXTSTYLEFONTMODEL",
+      2636378356: "IFCTEXTSTYLEFORDEFINEDFONT",
+      1640371178: "IFCTEXTSTYLETEXTMODEL",
+      280115917: "IFCTEXTURECOORDINATE",
+      1742049831: "IFCTEXTURECOORDINATEGENERATOR",
+      2552916305: "IFCTEXTUREMAP",
+      1210645708: "IFCTEXTUREVERTEX",
+      3611470254: "IFCTEXTUREVERTEXLIST",
+      1199560280: "IFCTIMEPERIOD",
+      3101149627: "IFCTIMESERIES",
+      581633288: "IFCTIMESERIESVALUE",
+      1377556343: "IFCTOPOLOGICALREPRESENTATIONITEM",
+      1735638870: "IFCTOPOLOGYREPRESENTATION",
+      1935646853: "IFCTOROIDALSURFACE",
+      3825984169: "IFCTRANSFORMER",
+      1692211062: "IFCTRANSFORMERTYPE",
+      2595432518: "IFCTRANSITIONCURVESEGMENT2D",
+      1620046519: "IFCTRANSPORTELEMENT",
+      2097647324: "IFCTRANSPORTELEMENTTYPE",
+      2715220739: "IFCTRAPEZIUMPROFILEDEF",
+      2916149573: "IFCTRIANGULATEDFACESET",
+      1229763772: "IFCTRIANGULATEDIRREGULARNETWORK",
+      3593883385: "IFCTRIMMEDCURVE",
+      3026737570: "IFCTUBEBUNDLE",
+      1600972822: "IFCTUBEBUNDLETYPE",
+      1628702193: "IFCTYPEOBJECT",
+      3736923433: "IFCTYPEPROCESS",
+      2347495698: "IFCTYPEPRODUCT",
+      3698973494: "IFCTYPERESOURCE",
+      427810014: "IFCUSHAPEPROFILEDEF",
+      180925521: "IFCUNITASSIGNMENT",
+      630975310: "IFCUNITARYCONTROLELEMENT",
+      3179687236: "IFCUNITARYCONTROLELEMENTTYPE",
+      4292641817: "IFCUNITARYEQUIPMENT",
+      1911125066: "IFCUNITARYEQUIPMENTTYPE",
+      4207607924: "IFCVALVE",
+      728799441: "IFCVALVETYPE",
+      1417489154: "IFCVECTOR",
+      2799835756: "IFCVERTEX",
+      2759199220: "IFCVERTEXLOOP",
+      1907098498: "IFCVERTEXPOINT",
+      1530820697: "IFCVIBRATIONDAMPER",
+      3956297820: "IFCVIBRATIONDAMPERTYPE",
+      2391383451: "IFCVIBRATIONISOLATOR",
+      3313531582: "IFCVIBRATIONISOLATORTYPE",
+      2769231204: "IFCVIRTUALELEMENT",
+      891718957: "IFCVIRTUALGRIDINTERSECTION",
+      926996030: "IFCVOIDINGFEATURE",
+      2391406946: "IFCWALL",
+      4156078855: "IFCWALLELEMENTEDCASE",
+      3512223829: "IFCWALLSTANDARDCASE",
+      1898987631: "IFCWALLTYPE",
+      4237592921: "IFCWASTETERMINAL",
+      1133259667: "IFCWASTETERMINALTYPE",
+      3304561284: "IFCWINDOW",
+      336235671: "IFCWINDOWLININGPROPERTIES",
+      512836454: "IFCWINDOWPANELPROPERTIES",
+      486154966: "IFCWINDOWSTANDARDCASE",
+      1299126871: "IFCWINDOWSTYLE",
+      4009809668: "IFCWINDOWTYPE",
+      4088093105: "IFCWORKCALENDAR",
+      1028945134: "IFCWORKCONTROL",
+      4218914973: "IFCWORKPLAN",
+      3342526732: "IFCWORKSCHEDULE",
+      1236880293: "IFCWORKTIME",
+      2543172580: "IFCZSHAPEPROFILEDEF",
+      1033361043: "IFCZONE"
+    };
+
     // dist/helpers/properties.ts
     var PropsNames$1 = {
       aggregates: {
@@ -89448,6 +90325,9 @@
     var Properties = class {
       constructor(api) {
         this.api = api;
+      }
+      getIfcType(type) {
+        return IfcTypesMap$1[type];
       }
       getItemProperties(modelID, id, recursive = false) {
         return __async(this, null, function* () {
@@ -89636,6 +90516,7 @@
         this.wasmModule = void 0;
         this.fs = void 0;
         this.wasmPath = "";
+        this.isWasmPathAbsolute = false;
         this.ifcGuidMap = new Map();
         this.properties = new Properties(this);
       }
@@ -89644,6 +90525,9 @@
           if (WebIFCWasm) {
             let locateFileHandler = (path, prefix) => {
               if (path.endsWith(".wasm")) {
+                if (this.isWasmPathAbsolute) {
+                  return this.wasmPath + path;
+                }
                 return prefix + this.wasmPath + path;
               }
               return prefix + path;
@@ -89813,8 +90697,9 @@
         }
         this.ifcGuidMap.set(modelID, map);
       }
-      SetWasmPath(path) {
+      SetWasmPath(path, absolute = false) {
         this.wasmPath = path;
+        this.isWasmPathAbsolute = absolute;
       }
     };
 
@@ -89904,9 +90789,12 @@
             if (ClippingEdges.createDefaultIfcStyles) {
                 await this.updateIfcStyles();
             }
+            if (ClippingEdges.forceStyleUpdate) {
+                this.updateSubsetsTranformation();
+            }
             Object.keys(ClippingEdges.styles).forEach((styleName) => {
                 try {
-                    //this can trow error if there is an empty mesh, we still want to update other edges so we catch ere
+                    // this can trow error if there is an empty mesh, we still want to update other edges so we catch ere
                     this.drawEdges(styleName);
                 }
                 catch (e) {
@@ -89917,14 +90805,17 @@
         // Creates a new style that applies to all clipping edges for IFC models
         static async newStyle(styleName, categories, material = ClippingEdges.defaultMaterial) {
             const subsets = [];
-            const ids = ClippingEdges.context.items.ifcModels.map((model) => model.modelID);
-            for (let i = 0; i < ids.length; i++) {
+            const models = ClippingEdges.context.items.ifcModels;
+            for (let i = 0; i < models.length; i++) {
                 // eslint-disable-next-line no-await-in-loop
-                subsets.push(await this.newSubset(styleName, ids[i], categories));
+                const subset = await ClippingEdges.newSubset(styleName, models[i], categories);
+                if (subset) {
+                    subsets.push(subset);
+                }
             }
             material.clippingPlanes = ClippingEdges.context.getClippingPlanes();
             ClippingEdges.styles[styleName] = {
-                ids,
+                ids: models.map((model) => model.modelID),
                 categories,
                 material,
                 meshes: subsets
@@ -89950,13 +90841,32 @@
             for (let i = 0; i < styleNames.length; i++) {
                 const name = styleNames[i];
                 const style = ClippingEdges.styles[name];
-                const ids = ClippingEdges.context.items.ifcModels.map((model) => model.modelID);
+                const models = ClippingEdges.context.items.ifcModels;
                 style.meshes.length = 0;
-                for (let i = 0; i < ids.length; i++) {
+                for (let i = 0; i < models.length; i++) {
                     // eslint-disable-next-line no-await-in-loop
-                    style.meshes.push(await ClippingEdges.newSubset(name, ids[i], style.categories));
+                    const subset = await ClippingEdges.newSubset(name, models[i], style.categories);
+                    if (subset) {
+                        style.meshes.push(subset);
+                    }
                 }
             }
+        }
+        updateSubsetsTranformation() {
+            const styleNames = Object.keys(ClippingEdges.styles);
+            for (let i = 0; i < styleNames.length; i++) {
+                const styleName = styleNames[i];
+                const style = ClippingEdges.styles[styleName];
+                style.meshes.forEach((mesh) => {
+                    const model = ClippingEdges.context.items.ifcModels.find((model) => model.modelID === mesh.modelID);
+                    if (model) {
+                        mesh.position.copy(model.position);
+                        mesh.rotation.copy(model.rotation);
+                        mesh.scale.copy(model.scale);
+                    }
+                });
+            }
+            ClippingEdges.forceStyleUpdate = false;
         }
         async updateIfcStyles() {
             if (!this.stylesInitialized) {
@@ -89968,7 +90878,6 @@
             }
         }
         // Creates some basic styles so that users don't have to create it each time
-        // todo check all possible IFC classes are handled
         async createDefaultIfcStyles() {
             if (Object.keys(ClippingEdges.styles).length === 0) {
                 await ClippingEdges.newStyle('thick', [
@@ -89996,12 +90905,16 @@
             }
         }
         // Creates a new subset. This allows to apply a style just to a specific set of items
-        static async newSubset(styleName, modelID, categories) {
+        static async newSubset(styleName, model, categories) {
+            const modelID = model.modelID;
             const ids = await this.getItemIDs(modelID, categories);
+            // If no items were found, no geometry is created for this style
+            if (!ids.length)
+                return null;
             const manager = this.ifc.loader.ifcManager;
-            // todo handle case with empty ids list
+            let subset;
             if (ids.length > 0) {
-                return manager.createSubset({
+                subset = manager.createSubset({
                     modelID,
                     ids,
                     customID: styleName,
@@ -90011,18 +90924,13 @@
                     applyBVH: true
                 });
             }
-            try {
-                const subset = manager.getSubset(modelID, ClippingEdges.invisibleMaterial, styleName);
-                if (subset) {
-                    manager.clearSubset(modelID, styleName, ClippingEdges.invisibleMaterial);
-                    return subset;
-                }
-                // todo handling in case getSubset does not find one because above the creation was not successful
+            else {
+                subset = manager.getSubset(modelID, ClippingEdges.invisibleMaterial, styleName);
             }
-            catch (e) {
-                console.error('unable to find a subset', e);
-            }
-            return new Mesh();
+            subset.position.copy(model.position);
+            subset.rotation.copy(model.rotation);
+            subset.scale.copy(model.scale);
+            return subset;
         }
         static async getItemIDs(modelID, categories) {
             const ids = [];
@@ -90075,8 +90983,9 @@
             posAttr.array.fill(0);
             const notEmptyMeshes = style.meshes.filter((subset) => subset.geometry);
             notEmptyMeshes.forEach((mesh) => {
-                if (!mesh.geometry.boundsTree)
+                if (!mesh.geometry.boundsTree) {
                     throw new Error('Boundstree not found for clipping edges subset.');
+                }
                 this.inverseMatrix.copy(mesh.matrixWorld).invert();
                 this.localPlane.copy(this.clippingPlane).applyMatrix4(this.inverseMatrix);
                 mesh.geometry.boundsTree.shapecast({
@@ -90091,21 +91000,24 @@
                         this.tempLine.start.copy(tri.a);
                         this.tempLine.end.copy(tri.b);
                         if (this.localPlane.intersectLine(this.tempLine, this.tempVector)) {
-                            posAttr.setXYZ(index, this.tempVector.x, this.tempVector.y, this.tempVector.z);
+                            const result = this.tempVector.applyMatrix4(mesh.matrixWorld);
+                            posAttr.setXYZ(index, result.x, result.y, result.z);
                             count++;
                             index++;
                         }
                         this.tempLine.start.copy(tri.b);
                         this.tempLine.end.copy(tri.c);
                         if (this.localPlane.intersectLine(this.tempLine, this.tempVector)) {
-                            posAttr.setXYZ(index, this.tempVector.x, this.tempVector.y, this.tempVector.z);
+                            const result = this.tempVector.applyMatrix4(mesh.matrixWorld);
+                            posAttr.setXYZ(index, result.x, result.y, result.z);
                             count++;
                             index++;
                         }
                         this.tempLine.start.copy(tri.c);
                         this.tempLine.end.copy(tri.a);
                         if (this.localPlane.intersectLine(this.tempLine, this.tempVector)) {
-                            posAttr.setXYZ(index, this.tempVector.x, this.tempVector.y, this.tempVector.z);
+                            const result = this.tempVector.applyMatrix4(mesh.matrixWorld);
+                            posAttr.setXYZ(index, result.x, result.y, result.z);
                             count++;
                             index++;
                         }
@@ -90127,6 +91039,7 @@
                 edges.mesh.geometry.fromLineSegments(ClippingEdges.basicEdges);
                 const parent = ClippingEdges.edgesParent || ClippingEdges.context.getScene();
                 parent.add(edges.mesh);
+                ClippingEdges.context.renderer.postProduction.excludedItems.add(edges.mesh);
             }
         }
     }
@@ -90232,6 +91145,7 @@
             this.initializeControls(controls);
             const scene = this.context.getScene();
             scene.add(controls);
+            this.context.renderer.postProduction.excludedItems.add(controls);
             return controls;
         }
         initializeControls(controls) {
@@ -90278,6 +91192,7 @@
             const scene = this.context.getScene();
             scene.add(helper);
             helper.add(this.planeMesh);
+            this.context.renderer.postProduction.excludedItems.add(helper);
             return helper;
         }
         getPlaneMesh() {
@@ -90327,6 +91242,7 @@
                 this.planes.splice(index, 1);
                 this.context.removeClippingPlane(existingPlane.plane);
                 this.updateMaterials();
+                this.context.renderer.postProduction.update();
             };
             this.deleteAllPlanes = () => {
                 while (this.planes.length > 0) {
@@ -90363,9 +91279,11 @@
             };
             this.activateDragging = () => {
                 this.dragging = true;
+                this.context.renderer.postProduction.visible = false;
             };
             this.deactivateDragging = () => {
                 this.dragging = false;
+                this.context.renderer.postProduction.visible = true;
             };
             this.updateMaterials = () => {
                 // Apply clipping to all models
@@ -90406,6 +91324,7 @@
                 }
             });
             this.updateMaterials();
+            this.context.renderer.postProduction.visible = true;
         }
         get edgesActive() {
             return this.edgesEnabled;
@@ -90582,7 +91501,7 @@
                 if (foundUnit) {
                     const prefix = foundUnit.Prefix;
                     let scale;
-                    if (prefix === null)
+                    if (prefix === null || prefix === undefined)
                         scale = UnitScale.NONE;
                     else
                         scale = UnitScale[prefix.value];
@@ -90627,10 +91546,10 @@
                 this.planLists[modelID] = {};
             const currentPlanlist = this.planLists[modelID];
             const expressID = config.expressID;
-            if (currentPlanlist[name])
+            if (currentPlanlist[expressID])
                 return;
-            currentPlanlist[name] = { modelID, name, ortho, expressID };
-            await this.createClippingPlane(config, currentPlanlist[name]);
+            currentPlanlist[expressID] = { modelID, name, ortho, expressID };
+            await this.createClippingPlane(config, currentPlanlist[expressID]);
         }
         async goTo(modelID, name, animate = false) {
             var _a;
@@ -90667,13 +91586,13 @@
             const storeys = this.storeys[modelID];
             for (let i = 0; i < storeys.length; i++) {
                 if (storeys[i]) {
-                    const baseHeight = ((_a = storeys[i].Elevation) === null || _a === void 0 ? void 0 : _a.value) || 1;
+                    const baseHeight = ((_a = storeys[i].Elevation) === null || _a === void 0 ? void 0 : _a.value) || 0;
                     const elevation = (baseHeight + siteCoords[2]) * unitsScale + transformHeight;
                     const expressID = storeys[i].expressID;
                     // eslint-disable-next-line no-await-in-loop
                     await this.create({
                         modelID,
-                        name: this.getFloorplanName(storeys[i]) + i,
+                        name: this.getFloorplanName(storeys[i]),
                         point: new Vector3(0, elevation + this.defaultSectionOffset, 0),
                         normal: new Vector3(0, -1, 0),
                         rotation: 0,
@@ -90763,10 +91682,11 @@
                 plane.active = false;
         }
         getFloorplanName(floorplan) {
-            if (floorplan.Name && floorplan.Name.value) {
+            var _a, _b, _c, _d;
+            if ((_b = (_a = floorplan === null || floorplan === void 0 ? void 0 : floorplan.Name) === null || _a === void 0 ? void 0 : _a.value) === null || _b === void 0 ? void 0 : _b.length) {
                 return floorplan.Name.value;
             }
-            if (floorplan.LongName && floorplan.LongName.value) {
+            if ((_d = (_c = floorplan === null || floorplan === void 0 ? void 0 : floorplan.LongName) === null || _c === void 0 ? void 0 : _c.value) === null || _d === void 0 ? void 0 : _d.length) {
                 return floorplan.LongName.value;
             }
             return floorplan.GlobalId.value;
@@ -90794,6 +91714,7 @@
             this.grid.renderOrder = 0;
             const scene = this.context.getScene();
             scene.add(this.grid);
+            this.context.renderer.postProduction.excludedItems.add(this.grid);
         }
     }
 
@@ -90819,6 +91740,7 @@
             this.axes.renderOrder = 2;
             const scene = this.context.getScene();
             scene.add(this.axes);
+            this.context.renderer.postProduction.excludedItems.add(this.axes);
         }
     }
 
@@ -91162,7 +92084,7 @@
             return label;
         }
         getTextContent() {
-            return `${this.length} m`;
+            return `${this.length / IfcDimensionLine.scale} ${IfcDimensionLine.units}`;
         }
         newBoundingBox() {
             const box = new BoxGeometry(1, 1, this.length);
@@ -91187,6 +92109,8 @@
         }
     }
     IfcDimensionLine.scaleFactor = 0.1;
+    IfcDimensionLine.scale = 1;
+    IfcDimensionLine.units = 'm';
 
     class IfcDimensions extends IfcComponent {
         constructor(context) {
@@ -91624,6 +92548,33 @@
 
     }
 
+    // expands the given bounds by the provided triangle bounds
+    function expandByTriangleBounds( startIndex, triangleBounds, bounds ) {
+
+    	for ( let d = 0; d < 3; d ++ ) {
+
+    		const tCenter = triangleBounds[ startIndex + 2 * d ];
+    		const tHalf = triangleBounds[ startIndex + 2 * d + 1 ];
+
+    		const tMin = tCenter - tHalf;
+    		const tMax = tCenter + tHalf;
+
+    		if ( tMin < bounds[ d ] ) {
+
+    			bounds[ d ] = tMin;
+
+    		}
+
+    		if ( tMax > bounds[ d + 3 ] ) {
+
+    			bounds[ d + 3 ] = tMax;
+
+    		}
+
+    	}
+
+    }
+
     // compute bounds surface area
     function computeSurfaceArea( bounds ) {
 
@@ -91878,6 +92829,7 @@
     }
 
     const BIN_COUNT = 32;
+    const binsSort = ( a, b ) => a.candidate - b.candidate;
     const sahBins = new Array( BIN_COUNT ).fill().map( () => {
 
     	return {
@@ -91885,6 +92837,7 @@
     		count: 0,
     		bounds: new Float32Array( 6 ),
     		rightCacheBounds: new Float32Array( 6 ),
+    		leftCacheBounds: new Float32Array( 6 ),
     		candidate: 0,
 
     	};
@@ -91931,126 +92884,224 @@
     			const axisLength = axisRight - axisLeft;
     			const binWidth = axisLength / BIN_COUNT;
 
-    			// reset the bins
-    			for ( let i = 0; i < BIN_COUNT; i ++ ) {
+    			// If we have fewer triangles than we're planning to split then just check all
+    			// the triangle positions because it will be faster.
+    			if ( count < BIN_COUNT / 4 ) {
 
-    				const bin = sahBins[ i ];
-    				bin.count = 0;
-    				bin.candidate = axisLeft + binWidth + i * binWidth;
+    				// initialize the bin candidates
+    				const truncatedBins = [ ...sahBins ];
+    				truncatedBins.length = count;
 
-    				const bounds = bin.bounds;
-    				for ( let d = 0; d < 3; d ++ ) {
+    				// set the candidates
+    				let b = 0;
+    				for ( let c = cStart; c < cEnd; c += 6, b ++ ) {
 
-    					bounds[ d ] = Infinity;
-    					bounds[ d + 3 ] = - Infinity;
+    					const bin = truncatedBins[ b ];
+    					bin.candidate = triangleBounds[ c + 2 * a ];
+    					bin.count = 0;
 
-    				}
+    					const {
+    						bounds,
+    						leftCacheBounds,
+    						rightCacheBounds,
+    					} = bin;
+    					for ( let d = 0; d < 3; d ++ ) {
 
-    			}
+    						rightCacheBounds[ d ] = Infinity;
+    						rightCacheBounds[ d + 3 ] = - Infinity;
 
-    			// iterate over all center positions
-    			for ( let c = cStart; c < cEnd; c += 6 ) {
+    						leftCacheBounds[ d ] = Infinity;
+    						leftCacheBounds[ d + 3 ] = - Infinity;
 
-    				const triCenter = triangleBounds[ c + 2 * a ];
-    				const relativeCenter = triCenter - axisLeft;
-
-    				// in the partition function if the centroid lies on the split plane then it is
-    				// considered to be on the right side of the split
-    				let binIndex = ~ ~ ( relativeCenter / binWidth );
-    				if ( binIndex >= BIN_COUNT ) binIndex = BIN_COUNT - 1;
-
-    				const bin = sahBins[ binIndex ];
-    				bin.count ++;
-
-    				const bounds = bin.bounds;
-    				for ( let d = 0; d < 3; d ++ ) {
-
-    					const tCenter = triangleBounds[ c + 2 * d ];
-    					const tHalf = triangleBounds[ c + 2 * d + 1 ];
-
-    					const tMin = tCenter - tHalf;
-    					const tMax = tCenter + tHalf;
-
-    					if ( tMin < bounds[ d ] ) {
-
-    						bounds[ d ] = tMin;
+    						bounds[ d ] = Infinity;
+    						bounds[ d + 3 ] = - Infinity;
 
     					}
 
-    					if ( tMax > bounds[ d + 3 ] ) {
-
-    						bounds[ d + 3 ] = tMax;
-
-    					}
+    					expandByTriangleBounds( c, triangleBounds, bounds );
 
     				}
 
-    			}
+    				truncatedBins.sort( binsSort );
 
-    			// cache the unioned bounds from right to left so we don't have to regenerate them each time
-    			const lastBin = sahBins[ BIN_COUNT - 1 ];
-    			copyBounds( lastBin.bounds, lastBin.rightCacheBounds );
-    			for ( let i = BIN_COUNT - 2; i >= 0; i -- ) {
+    				// remove redundant splits
+    				let splitCount = count;
+    				for ( let bi = 0; bi < splitCount; bi ++ ) {
 
-    				const bin = sahBins[ i ];
-    				const nextBin = sahBins[ i + 1 ];
-    				unionBounds( bin.bounds, nextBin.rightCacheBounds, bin.rightCacheBounds );
+    					const bin = truncatedBins[ bi ];
+    					while ( bi + 1 < splitCount && truncatedBins[ bi + 1 ].candidate === bin.candidate ) {
 
-    			}
-
-    			let leftCount = 0;
-    			for ( let i = 0; i < BIN_COUNT - 1; i ++ ) {
-
-    				const bin = sahBins[ i ];
-    				const binCount = bin.count;
-    				const bounds = bin.bounds;
-
-    				const nextBin = sahBins[ i + 1 ];
-    				const rightBounds = nextBin.rightCacheBounds;
-
-    				// dont do anything with the bounds if the new bounds have no triangles
-    				if ( binCount !== 0 ) {
-
-    					if ( leftCount === 0 ) {
-
-    						copyBounds( bounds, leftBounds );
-
-    					} else {
-
-    						unionBounds( bounds, leftBounds, leftBounds );
+    						truncatedBins.splice( bi + 1, 1 );
+    						splitCount --;
 
     					}
 
     				}
 
-    				leftCount += binCount;
+    				// find the appropriate bin for each triangle and expand the bounds.
+    				for ( let c = cStart; c < cEnd; c += 6 ) {
 
-    				// check the cost of this split
-    				let leftProb = 0;
-    				let rightProb = 0;
+    					const center = triangleBounds[ c + 2 * a ];
+    					for ( let bi = 0; bi < splitCount; bi ++ ) {
 
-    				if ( leftCount !== 0 ) {
+    						const bin = truncatedBins[ bi ];
+    						if ( center >= bin.candidate ) {
 
-    					leftProb = computeSurfaceArea( leftBounds ) / rootSurfaceArea;
+    							expandByTriangleBounds( c, triangleBounds, bin.rightCacheBounds );
+
+    						} else {
+
+    							expandByTriangleBounds( c, triangleBounds, bin.leftCacheBounds );
+    							bin.count ++;
+
+    						}
+
+    					}
 
     				}
 
-    				const rightCount = count - leftCount;
-    				if ( rightCount !== 0 ) {
+    				// expand all the bounds
+    				for ( let bi = 0; bi < splitCount; bi ++ ) {
 
-    					rightProb = computeSurfaceArea( rightBounds ) / rootSurfaceArea;
+    					const bin = truncatedBins[ bi ];
+    					const leftCount = bin.count;
+    					const rightCount = count - bin.count;
+
+    					// check the cost of this split
+    					const leftBounds = bin.leftCacheBounds;
+    					const rightBounds = bin.rightCacheBounds;
+
+    					let leftProb = 0;
+    					if ( leftCount !== 0 ) {
+
+    						leftProb = computeSurfaceArea( leftBounds ) / rootSurfaceArea;
+
+    					}
+
+    					let rightProb = 0;
+    					if ( rightCount !== 0 ) {
+
+    						rightProb = computeSurfaceArea( rightBounds ) / rootSurfaceArea;
+
+    					}
+
+    					const cost = TRAVERSAL_COST + TRIANGLE_INTERSECT_COST * (
+    						leftProb * leftCount + rightProb * rightCount
+    					);
+
+    					if ( cost < bestCost ) {
+
+    						axis = a;
+    						bestCost = cost;
+    						pos = bin.candidate;
+
+    					}
 
     				}
 
-    				const cost = TRAVERSAL_COST + TRIANGLE_INTERSECT_COST * (
-    					leftProb * leftCount + rightProb * rightCount
-    				);
+    			} else {
 
-    				if ( cost < bestCost ) {
+    				// reset the bins
+    				for ( let i = 0; i < BIN_COUNT; i ++ ) {
 
-    					axis = a;
-    					bestCost = cost;
-    					pos = bin.candidate;
+    					const bin = sahBins[ i ];
+    					bin.count = 0;
+    					bin.candidate = axisLeft + binWidth + i * binWidth;
+
+    					const bounds = bin.bounds;
+    					for ( let d = 0; d < 3; d ++ ) {
+
+    						bounds[ d ] = Infinity;
+    						bounds[ d + 3 ] = - Infinity;
+
+    					}
+
+    				}
+
+    				// iterate over all center positions
+    				for ( let c = cStart; c < cEnd; c += 6 ) {
+
+    					const triCenter = triangleBounds[ c + 2 * a ];
+    					const relativeCenter = triCenter - axisLeft;
+
+    					// in the partition function if the centroid lies on the split plane then it is
+    					// considered to be on the right side of the split
+    					let binIndex = ~ ~ ( relativeCenter / binWidth );
+    					if ( binIndex >= BIN_COUNT ) binIndex = BIN_COUNT - 1;
+
+    					const bin = sahBins[ binIndex ];
+    					bin.count ++;
+
+    					expandByTriangleBounds( c, triangleBounds, bin.bounds );
+
+    				}
+
+    				// cache the unioned bounds from right to left so we don't have to regenerate them each time
+    				const lastBin = sahBins[ BIN_COUNT - 1 ];
+    				copyBounds( lastBin.bounds, lastBin.rightCacheBounds );
+    				for ( let i = BIN_COUNT - 2; i >= 0; i -- ) {
+
+    					const bin = sahBins[ i ];
+    					const nextBin = sahBins[ i + 1 ];
+    					unionBounds( bin.bounds, nextBin.rightCacheBounds, bin.rightCacheBounds );
+
+    				}
+
+    				let leftCount = 0;
+    				for ( let i = 0; i < BIN_COUNT - 1; i ++ ) {
+
+    					const bin = sahBins[ i ];
+    					const binCount = bin.count;
+    					const bounds = bin.bounds;
+
+    					const nextBin = sahBins[ i + 1 ];
+    					const rightBounds = nextBin.rightCacheBounds;
+
+    					// dont do anything with the bounds if the new bounds have no triangles
+    					if ( binCount !== 0 ) {
+
+    						if ( leftCount === 0 ) {
+
+    							copyBounds( bounds, leftBounds );
+
+    						} else {
+
+    							unionBounds( bounds, leftBounds, leftBounds );
+
+    						}
+
+    					}
+
+    					leftCount += binCount;
+
+    					// check the cost of this split
+    					let leftProb = 0;
+    					let rightProb = 0;
+
+    					if ( leftCount !== 0 ) {
+
+    						leftProb = computeSurfaceArea( leftBounds ) / rootSurfaceArea;
+
+    					}
+
+    					const rightCount = count - leftCount;
+    					if ( rightCount !== 0 ) {
+
+    						rightProb = computeSurfaceArea( rightBounds ) / rootSurfaceArea;
+
+    					}
+
+    					const cost = TRAVERSAL_COST + TRIANGLE_INTERSECT_COST * (
+    						leftProb * leftCount + rightProb * rightCount
+    					);
+
+    					if ( cost < bestCost ) {
+
+    						axis = a;
+    						bestCost = cost;
+    						pos = bin.candidate;
+
+    					}
 
     				}
 
@@ -92146,6 +93197,16 @@
 
     function buildTree( geo, options ) {
 
+    	function triggerProgress( trianglesProcessed ) {
+
+    		if ( onProgress ) {
+
+    			onProgress( trianglesProcessed / totalTriangles );
+
+    		}
+
+    	}
+
     	// either recursively splits the given node, creating left and right subtrees for it, or makes it a leaf node,
     	// recording the offset and count of its triangles and writing them into the reordered geometry index.
     	function splitNode( node, offset, count, centroidBoundingData = null, depth = 0 ) {
@@ -92165,6 +93226,7 @@
     		// early out if we've met our capacity
     		if ( count <= maxLeafTris || depth >= maxDepth ) {
 
+    			triggerProgress( offset + count );
     			node.offset = offset;
     			node.count = count;
     			return node;
@@ -92175,6 +93237,7 @@
     		const split = getOptimalSplit( node.boundingData, centroidBoundingData, triangleBounds, offset, count, strategy );
     		if ( split.axis === - 1 ) {
 
+    			triggerProgress( offset + count );
     			node.offset = offset;
     			node.count = count;
     			return node;
@@ -92186,6 +93249,7 @@
     		// create the two new child nodes
     		if ( splitOffset === offset || splitOffset === offset + count ) {
 
+    			triggerProgress( offset + count );
     			node.offset = offset;
     			node.count = count;
 
@@ -92232,6 +93296,8 @@
     	const verbose = options.verbose;
     	const maxLeafTris = options.maxLeafTris;
     	const strategy = options.strategy;
+    	const onProgress = options.onProgress;
+    	const totalTriangles = geo.index.count / 3;
     	let reachedMaxDepth = false;
 
     	const roots = [];
@@ -92684,13 +93750,13 @@
 
     } )();
 
-    class SeparatingAxisTriangle extends Triangle {
+    class ExtendedTriangle extends Triangle {
 
     	constructor( ...args ) {
 
     		super( ...args );
 
-    		this.isSeparatingAxisTriangle = true;
+    		this.isExtendedTriangle = true;
     		this.satAxes = new Array( 4 ).fill().map( () => new Vector3() );
     		this.satBounds = new Array( 4 ).fill().map( () => new SeparatingAxisBounds() );
     		this.points = [ this.a, this.b, this.c ];
@@ -92744,7 +93810,7 @@
 
     }
 
-    SeparatingAxisTriangle.prototype.closestPointToSegment = ( function () {
+    ExtendedTriangle.prototype.closestPointToSegment = ( function () {
 
     	const point1 = new Vector3();
     	const point2 = new Vector3();
@@ -92804,9 +93870,9 @@
 
     } )();
 
-    SeparatingAxisTriangle.prototype.intersectsTriangle = ( function () {
+    ExtendedTriangle.prototype.intersectsTriangle = ( function () {
 
-    	const saTri2 = new SeparatingAxisTriangle();
+    	const saTri2 = new ExtendedTriangle();
     	const arr1 = new Array( 3 );
     	const arr2 = new Array( 3 );
     	const cachedSatBounds = new SeparatingAxisBounds();
@@ -92829,7 +93895,7 @@
 
     		}
 
-    		if ( ! other.isSeparatingAxisTriangle ) {
+    		if ( ! other.isExtendedTriangle ) {
 
     			saTri2.copy( other );
     			saTri2.update();
@@ -92841,126 +93907,177 @@
 
     		}
 
-    		const satBounds1 = this.satBounds;
-    		const satAxes1 = this.satAxes;
-    		arr2[ 0 ] = other.a;
-    		arr2[ 1 ] = other.b;
-    		arr2[ 2 ] = other.c;
-    		for ( let i = 0; i < 4; i ++ ) {
+    		const plane1 = this.plane;
+    		const plane2 = other.plane;
 
-    			const sb = satBounds1[ i ];
-    			const sa = satAxes1[ i ];
-    			cachedSatBounds.setFromPoints( sa, arr2 );
-    			if ( sb.isSeparated( cachedSatBounds ) ) return false;
+    		if ( Math.abs( plane1.normal.dot( plane2.normal ) ) > 1.0 - 1e-10 ) {
 
-    		}
+    			// perform separating axis intersection test only for coplanar triangles
+    			const satBounds1 = this.satBounds;
+    			const satAxes1 = this.satAxes;
+    			arr2[ 0 ] = other.a;
+    			arr2[ 1 ] = other.b;
+    			arr2[ 2 ] = other.c;
+    			for ( let i = 0; i < 4; i ++ ) {
 
-    		const satBounds2 = other.satBounds;
-    		const satAxes2 = other.satAxes;
-    		arr1[ 0 ] = this.a;
-    		arr1[ 1 ] = this.b;
-    		arr1[ 2 ] = this.c;
-    		for ( let i = 0; i < 4; i ++ ) {
-
-    			const sb = satBounds2[ i ];
-    			const sa = satAxes2[ i ];
-    			cachedSatBounds.setFromPoints( sa, arr1 );
-    			if ( sb.isSeparated( cachedSatBounds ) ) return false;
-
-    		}
-
-    		// check crossed axes
-    		for ( let i = 0; i < 4; i ++ ) {
-
-    			const sa1 = satAxes1[ i ];
-    			for ( let i2 = 0; i2 < 4; i2 ++ ) {
-
-    				const sa2 = satAxes2[ i2 ];
-    				cachedAxis.crossVectors( sa1, sa2 );
-    				cachedSatBounds.setFromPoints( cachedAxis, arr1 );
-    				cachedSatBounds2.setFromPoints( cachedAxis, arr2 );
-    				if ( cachedSatBounds.isSeparated( cachedSatBounds2 ) ) return false;
+    				const sb = satBounds1[ i ];
+    				const sa = satAxes1[ i ];
+    				cachedSatBounds.setFromPoints( sa, arr2 );
+    				if ( sb.isSeparated( cachedSatBounds ) ) return false;
 
     			}
 
-    		}
+    			const satBounds2 = other.satBounds;
+    			const satAxes2 = other.satAxes;
+    			arr1[ 0 ] = this.a;
+    			arr1[ 1 ] = this.b;
+    			arr1[ 2 ] = this.c;
+    			for ( let i = 0; i < 4; i ++ ) {
 
-    		if ( target ) {
+    				const sb = satBounds2[ i ];
+    				const sa = satAxes2[ i ];
+    				cachedSatBounds.setFromPoints( sa, arr1 );
+    				if ( sb.isSeparated( cachedSatBounds ) ) return false;
 
-    			const plane1 = this.plane;
-    			const plane2 = other.plane;
+    			}
 
-    			if ( Math.abs( plane1.normal.dot( plane2.normal ) ) > 1.0 - 1e-10 ) {
+    			// check crossed axes
+    			for ( let i = 0; i < 4; i ++ ) {
+
+    				const sa1 = satAxes1[ i ];
+    				for ( let i2 = 0; i2 < 4; i2 ++ ) {
+
+    					const sa2 = satAxes2[ i2 ];
+    					cachedAxis.crossVectors( sa1, sa2 );
+    					cachedSatBounds.setFromPoints( cachedAxis, arr1 );
+    					cachedSatBounds2.setFromPoints( cachedAxis, arr2 );
+    					if ( cachedSatBounds.isSeparated( cachedSatBounds2 ) ) return false;
+
+    				}
+
+    			}
+
+    			if ( target ) {
 
     				// TODO find two points that intersect on the edges and make that the result
-    				console.warn( 'SeparatingAxisTriangle.intersectsTriangle: Triangles are coplanar which does not support an output edge. Setting edge to 0, 0, 0.' );
+    				console.warn( 'ExtendedTriangle.intersectsTriangle: Triangles are coplanar which does not support an output edge. Setting edge to 0, 0, 0.' );
+
     				target.start.set( 0, 0, 0 );
     				target.end.set( 0, 0, 0 );
 
-    			} else {
+    			}
 
-    				// find the edge that intersects the other triangle plane
-    				const points1 = this.points;
-    				let found1 = false;
-    				for ( let i = 0; i < 3; i ++ ) {
+    			return true;
 
-    					const p1 = points1[ i ];
-    					const p2 = points1[ ( i + 1 ) % 3 ];
+    		} else {
 
-    					edge.start.copy( p1 );
-    					edge.end.copy( p2 );
+    			// find the edge that intersects the other triangle plane
+    			const points1 = this.points;
+    			let found1 = false;
+    			let count1 = 0;
+    			for ( let i = 0; i < 3; i ++ ) {
 
-    					if ( plane2.intersectLine( edge, found1 ? edge1.start : edge1.end ) ) {
+    				const p1 = points1[ i ];
+    				const p2 = points1[ ( i + 1 ) % 3 ];
 
-    						if ( found1 ) {
+    				edge.start.copy( p1 );
+    				edge.end.copy( p2 );
+    				edge.delta( dir1 );
+    				if ( plane2.normal.dot( dir1 ) === 0 && plane2.distanceToPoint( edge.start ) === 0 ) {
 
-    							break;
+    					// if the edge lies on the plane then take the line
+    					edge1.copy( edge );
+    					count1 = 2;
+    					break;
 
-    						}
+    				} else if ( plane2.intersectLine( edge, found1 ? edge1.start : edge1.end ) ) {
 
-    						found1 = true;
+    					count1 ++;
+    					if ( found1 ) {
 
-    					}
-
-    				}
-
-    				// find the other triangles edge that intersects this plane
-    				const points2 = other.points;
-    				let found2 = false;
-    				for ( let i = 0; i < 3; i ++ ) {
-
-    					const p1 = points2[ i ];
-    					const p2 = points2[ ( i + 1 ) % 3 ];
-
-    					edge.start.copy( p1 );
-    					edge.end.copy( p2 );
-
-    					if ( plane1.intersectLine( edge, found2 ? edge2.start : edge2.end ) ) {
-
-    						if ( found2 ) {
-
-    							break;
-
-    						}
-
-    						found2 = true;
+    						break;
 
     					}
 
-    				}
-
-    				// find swap the second edge so both lines are running the same direction
-    				edge1.delta( dir1 );
-    				edge2.delta( dir2 );
-
-
-    				if ( dir1.dot( dir2 ) < 0 ) {
-
-    					let tmp = edge2.start;
-    					edge2.start = edge2.end;
-    					edge2.end = tmp;
+    					found1 = true;
 
     				}
+
+    			}
+
+    			if ( count1 !== 2 ) {
+
+    				return false;
+
+    			}
+
+    			// find the other triangles edge that intersects this plane
+    			const points2 = other.points;
+    			let found2 = false;
+    			let count2 = 0;
+    			for ( let i = 0; i < 3; i ++ ) {
+
+    				const p1 = points2[ i ];
+    				const p2 = points2[ ( i + 1 ) % 3 ];
+
+    				edge.start.copy( p1 );
+    				edge.end.copy( p2 );
+    				edge.delta( dir2 );
+    				if ( plane1.normal.dot( dir2 ) === 0 && plane1.distanceToPoint( edge.start ) === 0 ) {
+
+    					// if the edge lies on the plane then take the line
+    					edge2.copy( edge );
+    					count2 = 2;
+    					break;
+
+    				} else if ( plane1.intersectLine( edge, found2 ? edge2.start : edge2.end ) ) {
+
+    					count2 ++;
+    					if ( found2 ) {
+
+    						break;
+
+    					}
+
+    					found2 = true;
+
+    				}
+
+    			}
+
+    			if ( count2 !== 2 ) {
+
+    				return false;
+
+    			}
+
+    			// find swap the second edge so both lines are running the same direction
+    			edge1.delta( dir1 );
+    			edge2.delta( dir2 );
+
+    			if ( dir1.dot( dir2 ) < 0 ) {
+
+    				let tmp = edge2.start;
+    				edge2.start = edge2.end;
+    				edge2.end = tmp;
+
+    			}
+
+    			// check if the edges are overlapping
+    			const s1 = edge1.start.dot( dir1 );
+    			const e1 = edge1.end.dot( dir1 );
+    			const s2 = edge2.start.dot( dir1 );
+    			const e2 = edge2.end.dot( dir1 );
+    			const separated1 = e1 < s2;
+    			const separated2 = s1 < e2;
+    			if ( s1 !== e2 && s2 !== e1 && separated1 === separated2 ) {
+
+    				return false;
+
+    			}
+
+    			// assign the target output
+    			if ( target ) {
 
     				tempDir.subVectors( edge1.start, edge2.start );
     				if ( tempDir.dot( dir1 ) > 0 ) {
@@ -92986,16 +94103,16 @@
 
     			}
 
-    		}
+    			return true;
 
-    		return true;
+    		}
 
     	};
 
     } )();
 
 
-    SeparatingAxisTriangle.prototype.distanceToPoint = ( function () {
+    ExtendedTriangle.prototype.distanceToPoint = ( function () {
 
     	const target = new Vector3();
     	return function distanceToPoint( point ) {
@@ -93008,7 +94125,7 @@
     } )();
 
 
-    SeparatingAxisTriangle.prototype.distanceToTriangle = ( function () {
+    ExtendedTriangle.prototype.distanceToTriangle = ( function () {
 
     	const point = new Vector3();
     	const point2 = new Vector3();
@@ -93120,7 +94237,7 @@
     	set( min, max, matrix ) {
 
     		super.set( min, max );
-    		this.matrix = matrix;
+    		this.matrix.copy( matrix );
     		this.needsUpdate = true;
 
     	}
@@ -93238,7 +94355,7 @@
 
     OrientedBox.prototype.intersectsTriangle = ( function () {
 
-    	const saTri = new SeparatingAxisTriangle();
+    	const saTri = new ExtendedTriangle();
     	const pointsArr = new Array( 3 );
     	const cachedSatBounds = new SeparatingAxisBounds();
     	const cachedSatBounds2 = new SeparatingAxisBounds();
@@ -93251,7 +94368,7 @@
 
     		}
 
-    		if ( ! triangle.isSeparatingAxisTriangle ) {
+    		if ( ! triangle.isExtendedTriangle ) {
 
     			saTri.copy( triangle );
     			saTri.update();
@@ -94118,8 +95235,8 @@
 
     const intersectsGeometry = ( function () {
 
-    	const triangle = new SeparatingAxisTriangle();
-    	const triangle2 = new SeparatingAxisTriangle();
+    	const triangle = new ExtendedTriangle();
+    	const triangle2 = new ExtendedTriangle();
     	const invertedMat = new Matrix4();
 
     	const obb = new OrientedBox();
@@ -94308,7 +95425,7 @@
     const temp3 = /* @__PURE__ */ new Vector3();
     const temp4 = /* @__PURE__ */ new Vector3();
     const tempBox = /* @__PURE__ */ new Box3();
-    const trianglePool = /* @__PURE__ */ new PrimitivePool( () => new SeparatingAxisTriangle() );
+    const trianglePool = /* @__PURE__ */ new PrimitivePool( () => new ExtendedTriangle() );
 
     class MeshBVH {
 
@@ -94423,11 +95540,12 @@
     			verbose: true,
     			useSharedArrayBuffer: false,
     			setBoundingBox: true,
+    			onProgress: null,
 
     			// undocumented options
 
     			// Whether to skip generating the tree. Used for deserialization.
-    			[ SKIP_GENERATION ]: false
+    			[ SKIP_GENERATION ]: false,
 
     		}, options );
 
@@ -94873,20 +95991,24 @@
     			intersectsTriangles,
     		} = callbacks;
 
-    		const geometry = otherBvh.geometry;
-    		const indexAttr = geometry.index;
-    		const positionAttr = geometry.attributes.position;
+    		const indexAttr = this.geometry.index;
+    		const positionAttr = this.geometry.attributes.position;
+
+    		const otherIndexAttr = otherBvh.geometry.index;
+    		const otherPositionAttr = otherBvh.geometry.attributes.position;
 
     		tempMatrix.copy( matrixToLocal ).invert();
+
     		const triangle = trianglePool.getPrimitive();
     		const triangle2 = trianglePool.getPrimitive();
+
     		if ( intersectsTriangles ) {
 
     			function iterateOverDoubleTriangles( offset1, count1, offset2, count2, depth1, index1, depth2, index2 ) {
 
     				for ( let i2 = offset2, l2 = offset2 + count2; i2 < l2; i2 ++ ) {
 
-    					setTriangle( triangle2, i2 * 3, indexAttr, positionAttr );
+    					setTriangle( triangle2, i2 * 3, otherIndexAttr, otherPositionAttr );
     					triangle2.a.applyMatrix4( matrixToLocal );
     					triangle2.b.applyMatrix4( matrixToLocal );
     					triangle2.c.applyMatrix4( matrixToLocal );
@@ -95033,7 +96155,7 @@
 
     				boundsTraverseOrder: box => {
 
-    					return obb.distanceToBox( box, Math.min( closestDistance, maxThreshold ) );
+    					return obb.distanceToBox( box );
 
     				},
 
@@ -95068,7 +96190,7 @@
     						return otherGeometry.boundsTree.shapecast( {
     							boundsTraverseOrder: box => {
 
-    								return obb2.distanceToBox( box, Math.min( closestDistance, maxThreshold ) );
+    								return obb2.distanceToBox( box );
 
     							},
 
@@ -99168,6 +100290,7 @@
             this.meshes = new Set();
             // True only for prepick
             this.fastRemovePrevious = false;
+            this.renderOrder = 0;
             this.modelIDs = new Set();
             this.selectedFaces = {};
             this.pick = async (item, focusSelection = false, removePrevious = true) => {
@@ -99176,7 +100299,7 @@
                 if (item.faceIndex === undefined || ((_a = this.selectedFaces[mesh.modelID]) === null || _a === void 0 ? void 0 : _a.has(item.faceIndex))) {
                     return null;
                 }
-                const id = await this.loader.ifcManager.getExpressId(mesh.geometry, item.faceIndex);
+                const id = this.loader.ifcManager.getExpressId(mesh.geometry, item.faceIndex);
                 if (id === undefined)
                     return null;
                 if (removePrevious) {
@@ -99194,7 +100317,11 @@
                 this.selectedFaces[mesh.modelID].add(item.faceIndex);
                 this.modelIDs.add(mesh.modelID);
                 const selected = this.newSelection(mesh.modelID, [id], removePrevious);
+                selected.position.copy(mesh.position);
+                selected.rotation.copy(mesh.rotation);
+                selected.scale.copy(mesh.scale);
                 selected.visible = true;
+                selected.renderOrder = this.renderOrder;
                 if (focusSelection) {
                     await this.focusSelection(selected);
                 }
@@ -99206,6 +100333,7 @@
                 }
                 this.modelIDs.add(modelID);
                 const mesh = this.newSelection(modelID, ids, removePrevious);
+                mesh.renderOrder = this.renderOrder;
                 if (focusSelection)
                     await this.focusSelection(mesh);
             };
@@ -99219,6 +100347,7 @@
                 });
                 if (mesh) {
                     this.meshes.add(mesh);
+                    this.context.renderer.postProduction.excludedItems.add(mesh);
                 }
                 return mesh;
             };
@@ -99252,7 +100381,10 @@
             this.meshes.forEach((mesh) => (mesh.visible = visible));
         }
         async focusSelection(mesh) {
+            const postproductionActive = this.context.renderer.postProduction.active;
+            this.context.renderer.postProduction.active = false;
             await this.context.ifcCamera.targetItem(mesh);
+            this.context.renderer.postProduction.active = postproductionActive;
         }
     }
 
@@ -99262,12 +100394,13 @@
             this.ifc = ifc;
             this.userDataField = 'ifcjsFadedModel';
             this.defSelectMat = this.initializeDefMaterial(0xff33ff, 0.3);
-            this.defPreselectMat = this.initializeDefMaterial(0xffccff, 0.5);
+            this.defPreselectMat = this.initializeDefMaterial(0xff55ff, 0.5);
             this.defHighlightMat = this.initializeDefMaterial(0xeeeeee, 0.05);
             this.preselection = new IfcSelection(context, this.ifc.loader, this.defPreselectMat);
             this.preselection.fastRemovePrevious = true;
             this.selection = new IfcSelection(context, this.ifc.loader, this.defSelectMat);
             this.highlight = new IfcSelection(context, this.ifc.loader);
+            this.highlight.renderOrder = -1;
         }
         dispose() {
             var _a, _b, _c;
@@ -99374,6 +100507,9 @@
         unHighlightIfcItems() {
             this.context.items.ifcModels.forEach((model) => this.unHighlightItem(model));
             this.highlight.unpick();
+            if (this.context.renderer.postProduction.active) {
+                this.context.renderer.postProduction.visible = true;
+            }
         }
         unHighlightItem(model) {
             const fadedModel = model.userData[this.userDataField];
@@ -99385,10 +100521,16 @@
         fadeAwayModels() {
             this.context.items.ifcModels.forEach((model) => {
                 if (!model.userData[this.userDataField]) {
-                    model.userData[this.userDataField] = new Mesh(model.geometry, this.defHighlightMat);
+                    const mesh = new Mesh(model.geometry, this.defHighlightMat);
+                    model.userData[this.userDataField] = mesh;
+                    this.context.renderer.postProduction.excludedItems.add(mesh);
                 }
                 if (model.parent) {
-                    model.parent.add(model.userData[this.userDataField]);
+                    const fadedMesh = model.userData[this.userDataField];
+                    fadedMesh.position.copy(model.position);
+                    fadedMesh.rotation.copy(model.rotation);
+                    fadedMesh.scale.copy(model.scale);
+                    model.parent.add(fadedMesh);
                     model.removeFromParent();
                 }
             });
@@ -99864,13 +101006,13 @@
     var PI_2 = Math.PI * 2;
     var PI_HALF = Math.PI / 2;
 
-    var EPSILON = 1e-5;
+    var EPSILON$1 = 1e-5;
     function approxZero(number, error) {
-        if (error === void 0) { error = EPSILON; }
+        if (error === void 0) { error = EPSILON$1; }
         return Math.abs(number) < error;
     }
     function approxEquals(a, b, error) {
-        if (error === void 0) { error = EPSILON; }
+        if (error === void 0) { error = EPSILON$1; }
         return approxZero(a - b, error);
     }
     function roundToStep(value, step) {
@@ -101546,7 +102688,7 @@
             this.context = context;
             const dims = this.context.getDimensions();
             const aspect = dims.x / dims.y;
-            this.perspectiveCamera = new PerspectiveCamera(45, aspect, 0.1, 1000);
+            this.perspectiveCamera = new PerspectiveCamera(45, aspect, 1, 2000);
             this.orthographicCamera = new OrthographicCamera((frustumSize * aspect) / -2, (frustumSize * aspect) / 2, frustumSize / 2, frustumSize / -2, 0.1, 1000);
             this.setupCameras();
             CameraControls.install({ THREE: subsetOfTHREE });
@@ -101673,26 +102815,10 @@
             camera.lookAt(new Vector3(0, 0, 0));
         }
         setupControls() {
-            this.cameraControls.dampingFactor = 0.1;
+            this.cameraControls.dampingFactor = 0.2;
             this.cameraControls.dollyToCursor = true;
             this.cameraControls.infinityDolly = true;
             this.cameraControls.setTarget(0, 0, 0);
-        }
-    }
-
-    class IfcMouse extends IfcComponent {
-        constructor(context) {
-            super(context);
-            this.position = new Vector2();
-            this.setupMousePositionUpdate(context);
-        }
-        setupMousePositionUpdate(context) {
-            const domElement = context.getRenderer().domElement;
-            domElement.onmousemove = (event) => {
-                const bounds = domElement.getBoundingClientRect();
-                this.position.x = ((event.clientX - bounds.left) / (bounds.right - bounds.left)) * 2 - 1;
-                this.position.y = -((event.clientY - bounds.top) / (bounds.bottom - bounds.top)) * 2 + 1;
-            };
         }
     }
 
@@ -101701,16 +102827,14 @@
             super(context);
             this.context = context;
             this.raycaster = new Raycaster();
-            this.mouse = new IfcMouse(context);
         }
         dispose() {
             this.raycaster = null;
-            this.mouse = null;
             this.context = null;
         }
         castRay(items) {
             const camera = this.context.getCamera();
-            this.raycaster.setFromCamera(this.mouse.position, camera);
+            this.raycaster.setFromCamera(this.context.mouse.position, camera);
             return this.raycaster.intersectObjects(items);
         }
         castRayIfc() {
@@ -101727,139 +102851,2895 @@
         }
     }
 
-    var IfcEvent;
-    (function (IfcEvent) {
-        IfcEvent["onCameraReady"] = "onCameraReady";
-    })(IfcEvent || (IfcEvent = {}));
-    class IfcEvents {
-        constructor() {
-            this.events = {
-                [IfcEvent.onCameraReady]: {
-                    needsUpdate: false,
-                    published: false,
-                    actions: []
-                }
-            };
+    /**
+     * Full-screen textured quad shader
+     */
+
+    var CopyShader = {
+
+    	uniforms: {
+
+    		'tDiffuse': { value: null },
+    		'opacity': { value: 1.0 }
+
+    	},
+
+    	vertexShader: /* glsl */`
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+
+    	fragmentShader: /* glsl */`
+
+		uniform float opacity;
+
+		uniform sampler2D tDiffuse;
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vec4 texel = texture2D( tDiffuse, vUv );
+			gl_FragColor = opacity * texel;
+
+		}`
+
+    };
+
+    class Pass {
+
+    	constructor() {
+
+    		// if set to true, the pass is processed by the composer
+    		this.enabled = true;
+
+    		// if set to true, the pass indicates to swap read and write buffer after rendering
+    		this.needsSwap = true;
+
+    		// if set to true, the pass clears its buffer before rendering
+    		this.clear = false;
+
+    		// if set to true, the result of the pass is rendered to screen. This is set automatically by EffectComposer.
+    		this.renderToScreen = false;
+
+    	}
+
+    	setSize( /* width, height */ ) {}
+
+    	render( /* renderer, writeBuffer, readBuffer, deltaTime, maskActive */ ) {
+
+    		console.error( 'THREE.Pass: .render() must be implemented in derived pass.' );
+
+    	}
+
+    }
+
+    // Helper for passes that need to fill the viewport with a single quad.
+
+    const _camera = new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+
+    // https://github.com/mrdoob/three.js/pull/21358
+
+    const _geometry$1 = new BufferGeometry();
+    _geometry$1.setAttribute( 'position', new Float32BufferAttribute( [ - 1, 3, 0, - 1, - 1, 0, 3, - 1, 0 ], 3 ) );
+    _geometry$1.setAttribute( 'uv', new Float32BufferAttribute( [ 0, 2, 0, 0, 2, 0 ], 2 ) );
+
+    class FullScreenQuad {
+
+    	constructor( material ) {
+
+    		this._mesh = new Mesh( _geometry$1, material );
+
+    	}
+
+    	dispose() {
+
+    		this._mesh.geometry.dispose();
+
+    	}
+
+    	render( renderer ) {
+
+    		renderer.render( this._mesh, _camera );
+
+    	}
+
+    	get material() {
+
+    		return this._mesh.material;
+
+    	}
+
+    	set material( value ) {
+
+    		this._mesh.material = value;
+
+    	}
+
+    }
+
+    class ShaderPass extends Pass {
+
+    	constructor( shader, textureID ) {
+
+    		super();
+
+    		this.textureID = ( textureID !== undefined ) ? textureID : 'tDiffuse';
+
+    		if ( shader instanceof ShaderMaterial ) {
+
+    			this.uniforms = shader.uniforms;
+
+    			this.material = shader;
+
+    		} else if ( shader ) {
+
+    			this.uniforms = UniformsUtils.clone( shader.uniforms );
+
+    			this.material = new ShaderMaterial( {
+
+    				defines: Object.assign( {}, shader.defines ),
+    				uniforms: this.uniforms,
+    				vertexShader: shader.vertexShader,
+    				fragmentShader: shader.fragmentShader
+
+    			} );
+
+    		}
+
+    		this.fsQuad = new FullScreenQuad( this.material );
+
+    	}
+
+    	render( renderer, writeBuffer, readBuffer /*, deltaTime, maskActive */ ) {
+
+    		if ( this.uniforms[ this.textureID ] ) {
+
+    			this.uniforms[ this.textureID ].value = readBuffer.texture;
+
+    		}
+
+    		this.fsQuad.material = this.material;
+
+    		if ( this.renderToScreen ) {
+
+    			renderer.setRenderTarget( null );
+    			this.fsQuad.render( renderer );
+
+    		} else {
+
+    			renderer.setRenderTarget( writeBuffer );
+    			// TODO: Avoid using autoClear properties, see https://github.com/mrdoob/three.js/pull/15571#issuecomment-465669600
+    			if ( this.clear ) renderer.clear( renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil );
+    			this.fsQuad.render( renderer );
+
+    		}
+
+    	}
+
+    }
+
+    class MaskPass extends Pass {
+
+    	constructor( scene, camera ) {
+
+    		super();
+
+    		this.scene = scene;
+    		this.camera = camera;
+
+    		this.clear = true;
+    		this.needsSwap = false;
+
+    		this.inverse = false;
+
+    	}
+
+    	render( renderer, writeBuffer, readBuffer /*, deltaTime, maskActive */ ) {
+
+    		const context = renderer.getContext();
+    		const state = renderer.state;
+
+    		// don't update color or depth
+
+    		state.buffers.color.setMask( false );
+    		state.buffers.depth.setMask( false );
+
+    		// lock buffers
+
+    		state.buffers.color.setLocked( true );
+    		state.buffers.depth.setLocked( true );
+
+    		// set up stencil
+
+    		let writeValue, clearValue;
+
+    		if ( this.inverse ) {
+
+    			writeValue = 0;
+    			clearValue = 1;
+
+    		} else {
+
+    			writeValue = 1;
+    			clearValue = 0;
+
+    		}
+
+    		state.buffers.stencil.setTest( true );
+    		state.buffers.stencil.setOp( context.REPLACE, context.REPLACE, context.REPLACE );
+    		state.buffers.stencil.setFunc( context.ALWAYS, writeValue, 0xffffffff );
+    		state.buffers.stencil.setClear( clearValue );
+    		state.buffers.stencil.setLocked( true );
+
+    		// draw into the stencil buffer
+
+    		renderer.setRenderTarget( readBuffer );
+    		if ( this.clear ) renderer.clear();
+    		renderer.render( this.scene, this.camera );
+
+    		renderer.setRenderTarget( writeBuffer );
+    		if ( this.clear ) renderer.clear();
+    		renderer.render( this.scene, this.camera );
+
+    		// unlock color and depth buffer for subsequent rendering
+
+    		state.buffers.color.setLocked( false );
+    		state.buffers.depth.setLocked( false );
+
+    		// only render where stencil is set to 1
+
+    		state.buffers.stencil.setLocked( false );
+    		state.buffers.stencil.setFunc( context.EQUAL, 1, 0xffffffff ); // draw if == 1
+    		state.buffers.stencil.setOp( context.KEEP, context.KEEP, context.KEEP );
+    		state.buffers.stencil.setLocked( true );
+
+    	}
+
+    }
+
+    class ClearMaskPass extends Pass {
+
+    	constructor() {
+
+    		super();
+
+    		this.needsSwap = false;
+
+    	}
+
+    	render( renderer /*, writeBuffer, readBuffer, deltaTime, maskActive */ ) {
+
+    		renderer.state.buffers.stencil.setLocked( false );
+    		renderer.state.buffers.stencil.setTest( false );
+
+    	}
+
+    }
+
+    class EffectComposer {
+
+    	constructor( renderer, renderTarget ) {
+
+    		this.renderer = renderer;
+
+    		if ( renderTarget === undefined ) {
+
+    			const parameters = {
+    				minFilter: LinearFilter,
+    				magFilter: LinearFilter,
+    				format: RGBAFormat
+    			};
+
+    			const size = renderer.getSize( new Vector2() );
+    			this._pixelRatio = renderer.getPixelRatio();
+    			this._width = size.width;
+    			this._height = size.height;
+
+    			renderTarget = new WebGLRenderTarget( this._width * this._pixelRatio, this._height * this._pixelRatio, parameters );
+    			renderTarget.texture.name = 'EffectComposer.rt1';
+
+    		} else {
+
+    			this._pixelRatio = 1;
+    			this._width = renderTarget.width;
+    			this._height = renderTarget.height;
+
+    		}
+
+    		this.renderTarget1 = renderTarget;
+    		this.renderTarget2 = renderTarget.clone();
+    		this.renderTarget2.texture.name = 'EffectComposer.rt2';
+
+    		this.writeBuffer = this.renderTarget1;
+    		this.readBuffer = this.renderTarget2;
+
+    		this.renderToScreen = true;
+
+    		this.passes = [];
+
+    		// dependencies
+
+    		if ( CopyShader === undefined ) {
+
+    			console.error( 'THREE.EffectComposer relies on CopyShader' );
+
+    		}
+
+    		if ( ShaderPass === undefined ) {
+
+    			console.error( 'THREE.EffectComposer relies on ShaderPass' );
+
+    		}
+
+    		this.copyPass = new ShaderPass( CopyShader );
+
+    		this.clock = new Clock();
+
+    	}
+
+    	swapBuffers() {
+
+    		const tmp = this.readBuffer;
+    		this.readBuffer = this.writeBuffer;
+    		this.writeBuffer = tmp;
+
+    	}
+
+    	addPass( pass ) {
+
+    		this.passes.push( pass );
+    		pass.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+    	}
+
+    	insertPass( pass, index ) {
+
+    		this.passes.splice( index, 0, pass );
+    		pass.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+    	}
+
+    	removePass( pass ) {
+
+    		const index = this.passes.indexOf( pass );
+
+    		if ( index !== - 1 ) {
+
+    			this.passes.splice( index, 1 );
+
+    		}
+
+    	}
+
+    	isLastEnabledPass( passIndex ) {
+
+    		for ( let i = passIndex + 1; i < this.passes.length; i ++ ) {
+
+    			if ( this.passes[ i ].enabled ) {
+
+    				return false;
+
+    			}
+
+    		}
+
+    		return true;
+
+    	}
+
+    	render( deltaTime ) {
+
+    		// deltaTime value is in seconds
+
+    		if ( deltaTime === undefined ) {
+
+    			deltaTime = this.clock.getDelta();
+
+    		}
+
+    		const currentRenderTarget = this.renderer.getRenderTarget();
+
+    		let maskActive = false;
+
+    		for ( let i = 0, il = this.passes.length; i < il; i ++ ) {
+
+    			const pass = this.passes[ i ];
+
+    			if ( pass.enabled === false ) continue;
+
+    			pass.renderToScreen = ( this.renderToScreen && this.isLastEnabledPass( i ) );
+    			pass.render( this.renderer, this.writeBuffer, this.readBuffer, deltaTime, maskActive );
+
+    			if ( pass.needsSwap ) {
+
+    				if ( maskActive ) {
+
+    					const context = this.renderer.getContext();
+    					const stencil = this.renderer.state.buffers.stencil;
+
+    					//context.stencilFunc( context.NOTEQUAL, 1, 0xffffffff );
+    					stencil.setFunc( context.NOTEQUAL, 1, 0xffffffff );
+
+    					this.copyPass.render( this.renderer, this.writeBuffer, this.readBuffer, deltaTime );
+
+    					//context.stencilFunc( context.EQUAL, 1, 0xffffffff );
+    					stencil.setFunc( context.EQUAL, 1, 0xffffffff );
+
+    				}
+
+    				this.swapBuffers();
+
+    			}
+
+    			if ( MaskPass !== undefined ) {
+
+    				if ( pass instanceof MaskPass ) {
+
+    					maskActive = true;
+
+    				} else if ( pass instanceof ClearMaskPass ) {
+
+    					maskActive = false;
+
+    				}
+
+    			}
+
+    		}
+
+    		this.renderer.setRenderTarget( currentRenderTarget );
+
+    	}
+
+    	reset( renderTarget ) {
+
+    		if ( renderTarget === undefined ) {
+
+    			const size = this.renderer.getSize( new Vector2() );
+    			this._pixelRatio = this.renderer.getPixelRatio();
+    			this._width = size.width;
+    			this._height = size.height;
+
+    			renderTarget = this.renderTarget1.clone();
+    			renderTarget.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+    		}
+
+    		this.renderTarget1.dispose();
+    		this.renderTarget2.dispose();
+    		this.renderTarget1 = renderTarget;
+    		this.renderTarget2 = renderTarget.clone();
+
+    		this.writeBuffer = this.renderTarget1;
+    		this.readBuffer = this.renderTarget2;
+
+    	}
+
+    	setSize( width, height ) {
+
+    		this._width = width;
+    		this._height = height;
+
+    		const effectiveWidth = this._width * this._pixelRatio;
+    		const effectiveHeight = this._height * this._pixelRatio;
+
+    		this.renderTarget1.setSize( effectiveWidth, effectiveHeight );
+    		this.renderTarget2.setSize( effectiveWidth, effectiveHeight );
+
+    		for ( let i = 0; i < this.passes.length; i ++ ) {
+
+    			this.passes[ i ].setSize( effectiveWidth, effectiveHeight );
+
+    		}
+
+    	}
+
+    	setPixelRatio( pixelRatio ) {
+
+    		this._pixelRatio = pixelRatio;
+
+    		this.setSize( this._width, this._height );
+
+    	}
+
+    }
+
+    // Helper for passes that need to fill the viewport with a single quad.
+
+    new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+
+    // https://github.com/mrdoob/three.js/pull/21358
+
+    const _geometry = new BufferGeometry();
+    _geometry.setAttribute( 'position', new Float32BufferAttribute( [ - 1, 3, 0, - 1, - 1, 0, 3, - 1, 0 ], 3 ) );
+    _geometry.setAttribute( 'uv', new Float32BufferAttribute( [ 0, 2, 0, 0, 2, 0 ], 2 ) );
+
+    class RenderPass extends Pass {
+
+    	constructor( scene, camera, overrideMaterial, clearColor, clearAlpha ) {
+
+    		super();
+
+    		this.scene = scene;
+    		this.camera = camera;
+
+    		this.overrideMaterial = overrideMaterial;
+
+    		this.clearColor = clearColor;
+    		this.clearAlpha = ( clearAlpha !== undefined ) ? clearAlpha : 0;
+
+    		this.clear = true;
+    		this.clearDepth = false;
+    		this.needsSwap = false;
+    		this._oldClearColor = new Color();
+
+    	}
+
+    	render( renderer, writeBuffer, readBuffer /*, deltaTime, maskActive */ ) {
+
+    		const oldAutoClear = renderer.autoClear;
+    		renderer.autoClear = false;
+
+    		let oldClearAlpha, oldOverrideMaterial;
+
+    		if ( this.overrideMaterial !== undefined ) {
+
+    			oldOverrideMaterial = this.scene.overrideMaterial;
+
+    			this.scene.overrideMaterial = this.overrideMaterial;
+
+    		}
+
+    		if ( this.clearColor ) {
+
+    			renderer.getClearColor( this._oldClearColor );
+    			oldClearAlpha = renderer.getClearAlpha();
+
+    			renderer.setClearColor( this.clearColor, this.clearAlpha );
+
+    		}
+
+    		if ( this.clearDepth ) {
+
+    			renderer.clearDepth();
+
+    		}
+
+    		renderer.setRenderTarget( this.renderToScreen ? null : readBuffer );
+
+    		// TODO: Avoid using autoClear properties, see https://github.com/mrdoob/three.js/pull/15571#issuecomment-465669600
+    		if ( this.clear ) renderer.clear( renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil );
+    		renderer.render( this.scene, this.camera );
+
+    		if ( this.clearColor ) {
+
+    			renderer.setClearColor( this._oldClearColor, oldClearAlpha );
+
+    		}
+
+    		if ( this.overrideMaterial !== undefined ) {
+
+    			this.scene.overrideMaterial = oldOverrideMaterial;
+
+    		}
+
+    		renderer.autoClear = oldAutoClear;
+
+    	}
+
+    }
+
+    /**
+     * TODO
+     */
+
+    const SAOShader = {
+    	defines: {
+    		'NUM_SAMPLES': 7,
+    		'NUM_RINGS': 4,
+    		'NORMAL_TEXTURE': 0,
+    		'DIFFUSE_TEXTURE': 0,
+    		'DEPTH_PACKING': 1,
+    		'PERSPECTIVE_CAMERA': 1
+    	},
+    	uniforms: {
+
+    		'tDepth': { value: null },
+    		'tDiffuse': { value: null },
+    		'tNormal': { value: null },
+    		'size': { value: new Vector2( 512, 512 ) },
+
+    		'cameraNear': { value: 1 },
+    		'cameraFar': { value: 100 },
+    		'cameraProjectionMatrix': { value: new Matrix4() },
+    		'cameraInverseProjectionMatrix': { value: new Matrix4() },
+
+    		'scale': { value: 1.0 },
+    		'intensity': { value: 0.1 },
+    		'bias': { value: 0.5 },
+
+    		'minResolution': { value: 0.0 },
+    		'kernelRadius': { value: 100.0 },
+    		'randomSeed': { value: 0.0 }
+    	},
+    	vertexShader: /* glsl */`
+
+		varying vec2 vUv;
+
+		void main() {
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+		}`,
+
+    	fragmentShader: /* glsl */`
+
+		#include <common>
+
+		varying vec2 vUv;
+
+		#if DIFFUSE_TEXTURE == 1
+		uniform sampler2D tDiffuse;
+		#endif
+
+		uniform sampler2D tDepth;
+
+		#if NORMAL_TEXTURE == 1
+		uniform sampler2D tNormal;
+		#endif
+
+		uniform float cameraNear;
+		uniform float cameraFar;
+		uniform mat4 cameraProjectionMatrix;
+		uniform mat4 cameraInverseProjectionMatrix;
+
+		uniform float scale;
+		uniform float intensity;
+		uniform float bias;
+		uniform float kernelRadius;
+		uniform float minResolution;
+		uniform vec2 size;
+		uniform float randomSeed;
+
+		// RGBA depth
+
+		#include <packing>
+
+		vec4 getDefaultColor( const in vec2 screenPosition ) {
+			#if DIFFUSE_TEXTURE == 1
+			return texture2D( tDiffuse, vUv );
+			#else
+			return vec4( 1.0 );
+			#endif
+		}
+
+		float getDepth( const in vec2 screenPosition ) {
+			#if DEPTH_PACKING == 1
+			return unpackRGBAToDepth( texture2D( tDepth, screenPosition ) );
+			#else
+			return texture2D( tDepth, screenPosition ).x;
+			#endif
+		}
+
+		float getViewZ( const in float depth ) {
+			#if PERSPECTIVE_CAMERA == 1
+			return perspectiveDepthToViewZ( depth, cameraNear, cameraFar );
+			#else
+			return orthographicDepthToViewZ( depth, cameraNear, cameraFar );
+			#endif
+		}
+
+		vec3 getViewPosition( const in vec2 screenPosition, const in float depth, const in float viewZ ) {
+			float clipW = cameraProjectionMatrix[2][3] * viewZ + cameraProjectionMatrix[3][3];
+			vec4 clipPosition = vec4( ( vec3( screenPosition, depth ) - 0.5 ) * 2.0, 1.0 );
+			clipPosition *= clipW; // unprojection.
+
+			return ( cameraInverseProjectionMatrix * clipPosition ).xyz;
+		}
+
+		vec3 getViewNormal( const in vec3 viewPosition, const in vec2 screenPosition ) {
+			#if NORMAL_TEXTURE == 1
+			return unpackRGBToNormal( texture2D( tNormal, screenPosition ).xyz );
+			#else
+			return normalize( cross( dFdx( viewPosition ), dFdy( viewPosition ) ) );
+			#endif
+		}
+
+		float scaleDividedByCameraFar;
+		float minResolutionMultipliedByCameraFar;
+
+		float getOcclusion( const in vec3 centerViewPosition, const in vec3 centerViewNormal, const in vec3 sampleViewPosition ) {
+			vec3 viewDelta = sampleViewPosition - centerViewPosition;
+			float viewDistance = length( viewDelta );
+			float scaledScreenDistance = scaleDividedByCameraFar * viewDistance;
+
+			return max(0.0, (dot(centerViewNormal, viewDelta) - minResolutionMultipliedByCameraFar) / scaledScreenDistance - bias) / (1.0 + pow2( scaledScreenDistance ) );
+		}
+
+		// moving costly divides into consts
+		const float ANGLE_STEP = PI2 * float( NUM_RINGS ) / float( NUM_SAMPLES );
+		const float INV_NUM_SAMPLES = 1.0 / float( NUM_SAMPLES );
+
+		float getAmbientOcclusion( const in vec3 centerViewPosition ) {
+			// precompute some variables require in getOcclusion.
+			scaleDividedByCameraFar = scale / cameraFar;
+			minResolutionMultipliedByCameraFar = minResolution * cameraFar;
+			vec3 centerViewNormal = getViewNormal( centerViewPosition, vUv );
+
+			// jsfiddle that shows sample pattern: https://jsfiddle.net/a16ff1p7/
+			float angle = rand( vUv + randomSeed ) * PI2;
+			vec2 radius = vec2( kernelRadius * INV_NUM_SAMPLES ) / size;
+			vec2 radiusStep = radius;
+
+			float occlusionSum = 0.0;
+			float weightSum = 0.0;
+
+			for( int i = 0; i < NUM_SAMPLES; i ++ ) {
+				vec2 sampleUv = vUv + vec2( cos( angle ), sin( angle ) ) * radius;
+				radius += radiusStep;
+				angle += ANGLE_STEP;
+
+				float sampleDepth = getDepth( sampleUv );
+				if( sampleDepth >= ( 1.0 - EPSILON ) ) {
+					continue;
+				}
+
+				float sampleViewZ = getViewZ( sampleDepth );
+				vec3 sampleViewPosition = getViewPosition( sampleUv, sampleDepth, sampleViewZ );
+				occlusionSum += getOcclusion( centerViewPosition, centerViewNormal, sampleViewPosition );
+				weightSum += 1.0;
+			}
+
+			if( weightSum == 0.0 ) discard;
+
+			return occlusionSum * ( intensity / weightSum );
+		}
+
+		void main() {
+			float centerDepth = getDepth( vUv );
+			if( centerDepth >= ( 1.0 - EPSILON ) ) {
+				discard;
+			}
+
+			float centerViewZ = getViewZ( centerDepth );
+			vec3 viewPosition = getViewPosition( vUv, centerDepth, centerViewZ );
+
+			float ambientOcclusion = getAmbientOcclusion( viewPosition );
+
+			gl_FragColor = getDefaultColor( vUv );
+			gl_FragColor.xyz *=  1.0 - ambientOcclusion;
+		}`
+
+    };
+
+    /**
+     * TODO
+     */
+
+    const DepthLimitedBlurShader = {
+    	defines: {
+    		'KERNEL_RADIUS': 4,
+    		'DEPTH_PACKING': 1,
+    		'PERSPECTIVE_CAMERA': 1
+    	},
+    	uniforms: {
+    		'tDiffuse': { value: null },
+    		'size': { value: new Vector2( 512, 512 ) },
+    		'sampleUvOffsets': { value: [ new Vector2( 0, 0 ) ] },
+    		'sampleWeights': { value: [ 1.0 ] },
+    		'tDepth': { value: null },
+    		'cameraNear': { value: 10 },
+    		'cameraFar': { value: 1000 },
+    		'depthCutoff': { value: 10 },
+    	},
+    	vertexShader: /* glsl */`
+
+		#include <common>
+
+		uniform vec2 size;
+
+		varying vec2 vUv;
+		varying vec2 vInvSize;
+
+		void main() {
+			vUv = uv;
+			vInvSize = 1.0 / size;
+
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+		}`,
+
+    	fragmentShader: /* glsl */`
+
+		#include <common>
+		#include <packing>
+
+		uniform sampler2D tDiffuse;
+		uniform sampler2D tDepth;
+
+		uniform float cameraNear;
+		uniform float cameraFar;
+		uniform float depthCutoff;
+
+		uniform vec2 sampleUvOffsets[ KERNEL_RADIUS + 1 ];
+		uniform float sampleWeights[ KERNEL_RADIUS + 1 ];
+
+		varying vec2 vUv;
+		varying vec2 vInvSize;
+
+		float getDepth( const in vec2 screenPosition ) {
+			#if DEPTH_PACKING == 1
+			return unpackRGBAToDepth( texture2D( tDepth, screenPosition ) );
+			#else
+			return texture2D( tDepth, screenPosition ).x;
+			#endif
+		}
+
+		float getViewZ( const in float depth ) {
+			#if PERSPECTIVE_CAMERA == 1
+			return perspectiveDepthToViewZ( depth, cameraNear, cameraFar );
+			#else
+			return orthographicDepthToViewZ( depth, cameraNear, cameraFar );
+			#endif
+		}
+
+		void main() {
+			float depth = getDepth( vUv );
+			if( depth >= ( 1.0 - EPSILON ) ) {
+				discard;
+			}
+
+			float centerViewZ = -getViewZ( depth );
+			bool rBreak = false, lBreak = false;
+
+			float weightSum = sampleWeights[0];
+			vec4 diffuseSum = texture2D( tDiffuse, vUv ) * weightSum;
+
+			for( int i = 1; i <= KERNEL_RADIUS; i ++ ) {
+
+				float sampleWeight = sampleWeights[i];
+				vec2 sampleUvOffset = sampleUvOffsets[i] * vInvSize;
+
+				vec2 sampleUv = vUv + sampleUvOffset;
+				float viewZ = -getViewZ( getDepth( sampleUv ) );
+
+				if( abs( viewZ - centerViewZ ) > depthCutoff ) rBreak = true;
+
+				if( ! rBreak ) {
+					diffuseSum += texture2D( tDiffuse, sampleUv ) * sampleWeight;
+					weightSum += sampleWeight;
+				}
+
+				sampleUv = vUv - sampleUvOffset;
+				viewZ = -getViewZ( getDepth( sampleUv ) );
+
+				if( abs( viewZ - centerViewZ ) > depthCutoff ) lBreak = true;
+
+				if( ! lBreak ) {
+					diffuseSum += texture2D( tDiffuse, sampleUv ) * sampleWeight;
+					weightSum += sampleWeight;
+				}
+
+			}
+
+			gl_FragColor = diffuseSum / weightSum;
+		}`
+
+    };
+
+    const BlurShaderUtils = {
+
+    	createSampleWeights: function ( kernelRadius, stdDev ) {
+
+    		const weights = [];
+
+    		for ( let i = 0; i <= kernelRadius; i ++ ) {
+
+    			weights.push( gaussian( i, stdDev ) );
+
+    		}
+
+    		return weights;
+
+    	},
+
+    	createSampleOffsets: function ( kernelRadius, uvIncrement ) {
+
+    		const offsets = [];
+
+    		for ( let i = 0; i <= kernelRadius; i ++ ) {
+
+    			offsets.push( uvIncrement.clone().multiplyScalar( i ) );
+
+    		}
+
+    		return offsets;
+
+    	},
+
+    	configure: function ( material, kernelRadius, stdDev, uvIncrement ) {
+
+    		material.defines[ 'KERNEL_RADIUS' ] = kernelRadius;
+    		material.uniforms[ 'sampleUvOffsets' ].value = BlurShaderUtils.createSampleOffsets( kernelRadius, uvIncrement );
+    		material.uniforms[ 'sampleWeights' ].value = BlurShaderUtils.createSampleWeights( kernelRadius, stdDev );
+    		material.needsUpdate = true;
+
+    	}
+
+    };
+
+    function gaussian( x, stdDev ) {
+
+    	return Math.exp( - ( x * x ) / ( 2.0 * ( stdDev * stdDev ) ) ) / ( Math.sqrt( 2.0 * Math.PI ) * stdDev );
+
+    }
+
+    /**
+     * Unpack RGBA depth shader
+     * - show RGBA encoded depth as monochrome color
+     */
+
+    const UnpackDepthRGBAShader = {
+
+    	uniforms: {
+
+    		'tDiffuse': { value: null },
+    		'opacity': { value: 1.0 }
+
+    	},
+
+    	vertexShader: /* glsl */`
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+
+    	fragmentShader: /* glsl */`
+
+		uniform float opacity;
+
+		uniform sampler2D tDiffuse;
+
+		varying vec2 vUv;
+
+		#include <packing>
+
+		void main() {
+
+			float depth = 1.0 - unpackRGBAToDepth( texture2D( tDiffuse, vUv ) );
+			gl_FragColor = vec4( vec3( depth ), opacity );
+
+		}`
+
+    };
+
+    /**
+     * SAO implementation inspired from bhouston previous SAO work
+     */
+
+    class SAOPass extends Pass {
+
+    	constructor( scene, camera, useDepthTexture = false, useNormals = false, resolution = new Vector2( 256, 256 ) ) {
+
+    		super();
+
+    		this.scene = scene;
+    		this.camera = camera;
+
+    		this.clear = true;
+    		this.needsSwap = false;
+
+    		this.supportsDepthTextureExtension = useDepthTexture;
+    		this.supportsNormalTexture = useNormals;
+
+    		this.originalClearColor = new Color();
+    		this._oldClearColor = new Color();
+    		this.oldClearAlpha = 1;
+
+    		this.params = {
+    			output: 0,
+    			saoBias: 0.5,
+    			saoIntensity: 0.18,
+    			saoScale: 1,
+    			saoKernelRadius: 100,
+    			saoMinResolution: 0,
+    			saoBlur: true,
+    			saoBlurRadius: 8,
+    			saoBlurStdDev: 4,
+    			saoBlurDepthCutoff: 0.01
+    		};
+
+    		this.resolution = new Vector2( resolution.x, resolution.y );
+
+    		this.saoRenderTarget = new WebGLRenderTarget( this.resolution.x, this.resolution.y, {
+    			minFilter: LinearFilter,
+    			magFilter: LinearFilter,
+    			format: RGBAFormat
+    		} );
+    		this.blurIntermediateRenderTarget = this.saoRenderTarget.clone();
+    		this.beautyRenderTarget = this.saoRenderTarget.clone();
+
+    		this.normalRenderTarget = new WebGLRenderTarget( this.resolution.x, this.resolution.y, {
+    			minFilter: NearestFilter,
+    			magFilter: NearestFilter,
+    			format: RGBAFormat
+    		} );
+    		this.depthRenderTarget = this.normalRenderTarget.clone();
+    		
+    		let depthTexture;
+
+    		if ( this.supportsDepthTextureExtension ) {
+
+    			depthTexture = new DepthTexture();
+    			depthTexture.type = UnsignedShortType;
+
+    			this.beautyRenderTarget.depthTexture = depthTexture;
+    			this.beautyRenderTarget.depthBuffer = true;
+
+    		}
+
+    		this.depthMaterial = new MeshDepthMaterial();
+    		this.depthMaterial.depthPacking = RGBADepthPacking;
+    		this.depthMaterial.blending = NoBlending;
+
+    		this.normalMaterial = new MeshNormalMaterial();
+    		this.normalMaterial.blending = NoBlending;
+
+    		if ( SAOShader === undefined ) {
+
+    			console.error( 'THREE.SAOPass relies on SAOShader' );
+
+    		}
+
+    		this.saoMaterial = new ShaderMaterial( {
+    			defines: Object.assign( {}, SAOShader.defines ),
+    			fragmentShader: SAOShader.fragmentShader,
+    			vertexShader: SAOShader.vertexShader,
+    			uniforms: UniformsUtils.clone( SAOShader.uniforms )
+    		} );
+    		this.saoMaterial.extensions.derivatives = true;
+    		this.saoMaterial.defines[ 'DEPTH_PACKING' ] = this.supportsDepthTextureExtension ? 0 : 1;
+    		this.saoMaterial.defines[ 'NORMAL_TEXTURE' ] = this.supportsNormalTexture ? 1 : 0;
+    		this.saoMaterial.defines[ 'PERSPECTIVE_CAMERA' ] = this.camera.isPerspectiveCamera ? 1 : 0;
+    		this.saoMaterial.uniforms[ 'tDepth' ].value = ( this.supportsDepthTextureExtension ) ? depthTexture : this.depthRenderTarget.texture;
+    		this.saoMaterial.uniforms[ 'tNormal' ].value = this.normalRenderTarget.texture;
+    		this.saoMaterial.uniforms[ 'size' ].value.set( this.resolution.x, this.resolution.y );
+    		this.saoMaterial.uniforms[ 'cameraInverseProjectionMatrix' ].value.copy( this.camera.projectionMatrixInverse );
+    		this.saoMaterial.uniforms[ 'cameraProjectionMatrix' ].value = this.camera.projectionMatrix;
+    		this.saoMaterial.blending = NoBlending;
+
+    		if ( DepthLimitedBlurShader === undefined ) {
+
+    			console.error( 'THREE.SAOPass relies on DepthLimitedBlurShader' );
+
+    		}
+
+    		this.vBlurMaterial = new ShaderMaterial( {
+    			uniforms: UniformsUtils.clone( DepthLimitedBlurShader.uniforms ),
+    			defines: Object.assign( {}, DepthLimitedBlurShader.defines ),
+    			vertexShader: DepthLimitedBlurShader.vertexShader,
+    			fragmentShader: DepthLimitedBlurShader.fragmentShader
+    		} );
+    		this.vBlurMaterial.defines[ 'DEPTH_PACKING' ] = this.supportsDepthTextureExtension ? 0 : 1;
+    		this.vBlurMaterial.defines[ 'PERSPECTIVE_CAMERA' ] = this.camera.isPerspectiveCamera ? 1 : 0;
+    		this.vBlurMaterial.uniforms[ 'tDiffuse' ].value = this.saoRenderTarget.texture;
+    		this.vBlurMaterial.uniforms[ 'tDepth' ].value = ( this.supportsDepthTextureExtension ) ? depthTexture : this.depthRenderTarget.texture;
+    		this.vBlurMaterial.uniforms[ 'size' ].value.set( this.resolution.x, this.resolution.y );
+    		this.vBlurMaterial.blending = NoBlending;
+
+    		this.hBlurMaterial = new ShaderMaterial( {
+    			uniforms: UniformsUtils.clone( DepthLimitedBlurShader.uniforms ),
+    			defines: Object.assign( {}, DepthLimitedBlurShader.defines ),
+    			vertexShader: DepthLimitedBlurShader.vertexShader,
+    			fragmentShader: DepthLimitedBlurShader.fragmentShader
+    		} );
+    		this.hBlurMaterial.defines[ 'DEPTH_PACKING' ] = this.supportsDepthTextureExtension ? 0 : 1;
+    		this.hBlurMaterial.defines[ 'PERSPECTIVE_CAMERA' ] = this.camera.isPerspectiveCamera ? 1 : 0;
+    		this.hBlurMaterial.uniforms[ 'tDiffuse' ].value = this.blurIntermediateRenderTarget.texture;
+    		this.hBlurMaterial.uniforms[ 'tDepth' ].value = ( this.supportsDepthTextureExtension ) ? depthTexture : this.depthRenderTarget.texture;
+    		this.hBlurMaterial.uniforms[ 'size' ].value.set( this.resolution.x, this.resolution.y );
+    		this.hBlurMaterial.blending = NoBlending;
+
+    		if ( CopyShader === undefined ) {
+
+    			console.error( 'THREE.SAOPass relies on CopyShader' );
+
+    		}
+
+    		this.materialCopy = new ShaderMaterial( {
+    			uniforms: UniformsUtils.clone( CopyShader.uniforms ),
+    			vertexShader: CopyShader.vertexShader,
+    			fragmentShader: CopyShader.fragmentShader,
+    			blending: NoBlending
+    		} );
+    		this.materialCopy.transparent = true;
+    		this.materialCopy.depthTest = false;
+    		this.materialCopy.depthWrite = false;
+    		this.materialCopy.blending = CustomBlending;
+    		this.materialCopy.blendSrc = DstColorFactor;
+    		this.materialCopy.blendDst = ZeroFactor;
+    		this.materialCopy.blendEquation = AddEquation;
+    		this.materialCopy.blendSrcAlpha = DstAlphaFactor;
+    		this.materialCopy.blendDstAlpha = ZeroFactor;
+    		this.materialCopy.blendEquationAlpha = AddEquation;
+
+    		if ( UnpackDepthRGBAShader === undefined ) {
+
+    			console.error( 'THREE.SAOPass relies on UnpackDepthRGBAShader' );
+
+    		}
+
+    		this.depthCopy = new ShaderMaterial( {
+    			uniforms: UniformsUtils.clone( UnpackDepthRGBAShader.uniforms ),
+    			vertexShader: UnpackDepthRGBAShader.vertexShader,
+    			fragmentShader: UnpackDepthRGBAShader.fragmentShader,
+    			blending: NoBlending
+    		} );
+
+    		this.fsQuad = new FullScreenQuad( null );
+
+    	}
+
+    	render( renderer, writeBuffer, readBuffer/*, deltaTime, maskActive*/ ) {
+
+    		// Rendering readBuffer first when rendering to screen
+    		if ( this.renderToScreen ) {
+
+    			this.materialCopy.blending = NoBlending;
+    			this.materialCopy.uniforms[ 'tDiffuse' ].value = readBuffer.texture;
+    			this.materialCopy.needsUpdate = true;
+    			this.renderPass( renderer, this.materialCopy, null );
+
+    		}
+
+    		if ( this.params.output === 1 ) {
+
+    			return;
+
+    		}
+
+    		renderer.getClearColor( this._oldClearColor );
+    		this.oldClearAlpha = renderer.getClearAlpha();
+    		const oldAutoClear = renderer.autoClear;
+    		renderer.autoClear = false;
+
+    		renderer.setRenderTarget( this.depthRenderTarget );
+    		renderer.clear();
+
+    		this.saoMaterial.uniforms[ 'bias' ].value = this.params.saoBias;
+    		this.saoMaterial.uniforms[ 'intensity' ].value = this.params.saoIntensity;
+    		this.saoMaterial.uniforms[ 'scale' ].value = this.params.saoScale;
+    		this.saoMaterial.uniforms[ 'kernelRadius' ].value = this.params.saoKernelRadius;
+    		this.saoMaterial.uniforms[ 'minResolution' ].value = this.params.saoMinResolution;
+    		this.saoMaterial.uniforms[ 'cameraNear' ].value = this.camera.near;
+    		this.saoMaterial.uniforms[ 'cameraFar' ].value = this.camera.far;
+    		// this.saoMaterial.uniforms['randomSeed'].value = Math.random();
+
+    		const depthCutoff = this.params.saoBlurDepthCutoff * ( this.camera.far - this.camera.near );
+    		this.vBlurMaterial.uniforms[ 'depthCutoff' ].value = depthCutoff;
+    		this.hBlurMaterial.uniforms[ 'depthCutoff' ].value = depthCutoff;
+
+    		this.vBlurMaterial.uniforms[ 'cameraNear' ].value = this.camera.near;
+    		this.vBlurMaterial.uniforms[ 'cameraFar' ].value = this.camera.far;
+    		this.hBlurMaterial.uniforms[ 'cameraNear' ].value = this.camera.near;
+    		this.hBlurMaterial.uniforms[ 'cameraFar' ].value = this.camera.far;
+
+    		this.params.saoBlurRadius = Math.floor( this.params.saoBlurRadius );
+    		if ( ( this.prevStdDev !== this.params.saoBlurStdDev ) || ( this.prevNumSamples !== this.params.saoBlurRadius ) ) {
+
+    			BlurShaderUtils.configure( this.vBlurMaterial, this.params.saoBlurRadius, this.params.saoBlurStdDev, new Vector2( 0, 1 ) );
+    			BlurShaderUtils.configure( this.hBlurMaterial, this.params.saoBlurRadius, this.params.saoBlurStdDev, new Vector2( 1, 0 ) );
+    			this.prevStdDev = this.params.saoBlurStdDev;
+    			this.prevNumSamples = this.params.saoBlurRadius;
+
+    		}
+
+    		// Rendering scene to depth texture
+    		renderer.setClearColor( 0x000000 );
+    		renderer.setRenderTarget( this.beautyRenderTarget );
+    		renderer.clear();
+    		renderer.render( this.scene, this.camera );
+
+    		// Re-render scene if depth texture extension is not supported
+    		if ( ! this.supportsDepthTextureExtension ) {
+
+    			// Clear rule : far clipping plane in both RGBA and Basic encoding
+    			this.renderOverride( renderer, this.depthMaterial, this.depthRenderTarget, 0x000000, 1.0 );
+
+    		}
+
+    		if ( this.supportsNormalTexture ) {
+
+    			// Clear rule : default normal is facing the camera
+    			this.renderOverride( renderer, this.normalMaterial, this.normalRenderTarget, 0x7777ff, 1.0 );
+
+    		}
+
+    		// Rendering SAO texture
+    		this.renderPass( renderer, this.saoMaterial, this.saoRenderTarget, 0xffffff, 1.0 );
+
+    		// Blurring SAO texture
+    		if ( this.params.saoBlur ) {
+
+    			this.renderPass( renderer, this.vBlurMaterial, this.blurIntermediateRenderTarget, 0xffffff, 1.0 );
+    			this.renderPass( renderer, this.hBlurMaterial, this.saoRenderTarget, 0xffffff, 1.0 );
+
+    		}
+
+    		let outputMaterial = this.materialCopy;
+    		// Setting up SAO rendering
+    		if ( this.params.output === 3 ) {
+
+    			if ( this.supportsDepthTextureExtension ) {
+
+    				this.materialCopy.uniforms[ 'tDiffuse' ].value = this.beautyRenderTarget.depthTexture;
+    				this.materialCopy.needsUpdate = true;
+
+    			} else {
+
+    				this.depthCopy.uniforms[ 'tDiffuse' ].value = this.depthRenderTarget.texture;
+    				this.depthCopy.needsUpdate = true;
+    				outputMaterial = this.depthCopy;
+
+    			}
+
+    		} else if ( this.params.output === 4 ) {
+
+    			this.materialCopy.uniforms[ 'tDiffuse' ].value = this.normalRenderTarget.texture;
+    			this.materialCopy.needsUpdate = true;
+
+    		} else {
+
+    			this.materialCopy.uniforms[ 'tDiffuse' ].value = this.saoRenderTarget.texture;
+    			this.materialCopy.needsUpdate = true;
+
+    		}
+
+    		// Blending depends on output, only want a CustomBlending when showing SAO
+    		if ( this.params.output === 0 ) {
+
+    			outputMaterial.blending = CustomBlending;
+
+    		} else {
+
+    			outputMaterial.blending = NoBlending;
+
+    		}
+
+    		// Rendering SAOPass result on top of previous pass
+    		this.renderPass( renderer, outputMaterial, this.renderToScreen ? null : readBuffer );
+
+    		renderer.setClearColor( this._oldClearColor, this.oldClearAlpha );
+    		renderer.autoClear = oldAutoClear;
+
+    	}
+
+    	renderPass( renderer, passMaterial, renderTarget, clearColor, clearAlpha ) {
+
+    		// save original state
+    		renderer.getClearColor( this.originalClearColor );
+    		const originalClearAlpha = renderer.getClearAlpha();
+    		const originalAutoClear = renderer.autoClear;
+
+    		renderer.setRenderTarget( renderTarget );
+
+    		// setup pass state
+    		renderer.autoClear = false;
+    		if ( ( clearColor !== undefined ) && ( clearColor !== null ) ) {
+
+    			renderer.setClearColor( clearColor );
+    			renderer.setClearAlpha( clearAlpha || 0.0 );
+    			renderer.clear();
+
+    		}
+
+    		this.fsQuad.material = passMaterial;
+    		this.fsQuad.render( renderer );
+
+    		// restore original state
+    		renderer.autoClear = originalAutoClear;
+    		renderer.setClearColor( this.originalClearColor );
+    		renderer.setClearAlpha( originalClearAlpha );
+
+    	}
+
+    	renderOverride( renderer, overrideMaterial, renderTarget, clearColor, clearAlpha ) {
+
+    		renderer.getClearColor( this.originalClearColor );
+    		const originalClearAlpha = renderer.getClearAlpha();
+    		const originalAutoClear = renderer.autoClear;
+
+    		renderer.setRenderTarget( renderTarget );
+    		renderer.autoClear = false;
+
+    		clearColor = overrideMaterial.clearColor || clearColor;
+    		clearAlpha = overrideMaterial.clearAlpha || clearAlpha;
+    		if ( ( clearColor !== undefined ) && ( clearColor !== null ) ) {
+
+    			renderer.setClearColor( clearColor );
+    			renderer.setClearAlpha( clearAlpha || 0.0 );
+    			renderer.clear();
+
+    		}
+
+    		this.scene.overrideMaterial = overrideMaterial;
+    		renderer.render( this.scene, this.camera );
+    		this.scene.overrideMaterial = null;
+
+    		// restore original state
+    		renderer.autoClear = originalAutoClear;
+    		renderer.setClearColor( this.originalClearColor );
+    		renderer.setClearAlpha( originalClearAlpha );
+
+    	}
+
+    	setSize( width, height ) {
+
+    		this.beautyRenderTarget.setSize( width, height );
+    		this.saoRenderTarget.setSize( width, height );
+    		this.blurIntermediateRenderTarget.setSize( width, height );
+    		this.normalRenderTarget.setSize( width, height );
+    		this.depthRenderTarget.setSize( width, height );
+
+    		this.saoMaterial.uniforms[ 'size' ].value.set( width, height );
+    		this.saoMaterial.uniforms[ 'cameraInverseProjectionMatrix' ].value.copy( this.camera.projectionMatrixInverse );
+    		this.saoMaterial.uniforms[ 'cameraProjectionMatrix' ].value = this.camera.projectionMatrix;
+    		this.saoMaterial.needsUpdate = true;
+
+    		this.vBlurMaterial.uniforms[ 'size' ].value.set( width, height );
+    		this.vBlurMaterial.needsUpdate = true;
+
+    		this.hBlurMaterial.uniforms[ 'size' ].value.set( width, height );
+    		this.hBlurMaterial.needsUpdate = true;
+
+    	}
+
+    }
+
+    SAOPass.OUTPUT = {
+    	'Beauty': 1,
+    	'Default': 0,
+    	'SAO': 2,
+    	'Depth': 3,
+    	'Normal': 4
+    };
+
+    /**
+     * NVIDIA FXAA by Timothy Lottes
+     * http://timothylottes.blogspot.com/2011/06/fxaa3-source-released.html
+     * - WebGL port by @supereggbert
+     * http://www.glge.org/demos/fxaa/
+     */
+
+    const FXAAShader = {
+
+    	uniforms: {
+
+    		'tDiffuse': { value: null },
+    		'resolution': { value: new Vector2( 1 / 1024, 1 / 512 ) }
+
+    	},
+
+    	vertexShader: /* glsl */`
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+
+    	fragmentShader:
+
+    	// FXAA 3.11 implementation by NVIDIA, ported to WebGL by Agost Biro (biro@archilogic.com)
+
+    	//----------------------------------------------------------------------------------
+    	// File:				es3-kepler\FXAA\assets\shaders/FXAA_DefaultES.frag
+    	// SDK Version: v3.00
+    	// Email:			 gameworks@nvidia.com
+    	// Site:				http://developer.nvidia.com/
+    	//
+    	// Copyright (c) 2014-2015, NVIDIA CORPORATION. All rights reserved.
+    	//
+    	// Redistribution and use in source and binary forms, with or without
+    	// modification, are permitted provided that the following conditions
+    	// are met:
+    	//	* Redistributions of source code must retain the above copyright
+    	//		notice, this list of conditions and the following disclaimer.
+    	//	* Redistributions in binary form must reproduce the above copyright
+    	//		notice, this list of conditions and the following disclaimer in the
+    	//		documentation and/or other materials provided with the distribution.
+    	//	* Neither the name of NVIDIA CORPORATION nor the names of its
+    	//		contributors may be used to endorse or promote products derived
+    	//		from this software without specific prior written permission.
+    	//
+    	// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS\'\' AND ANY
+    	// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    	// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    	// PURPOSE ARE DISCLAIMED.	IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    	// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    	// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    	// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+    	// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+    	// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    	// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    	// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    	//
+    	//----------------------------------------------------------------------------------
+
+    	/* glsl */`
+
+		precision highp float;
+
+		uniform sampler2D tDiffuse;
+
+		uniform vec2 resolution;
+
+		varying vec2 vUv;
+
+		#define FXAA_PC 1
+		#define FXAA_GLSL_100 1
+		#define FXAA_QUALITY_PRESET 12
+
+		#define FXAA_GREEN_AS_LUMA 1
+
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_PC_CONSOLE
+				//
+				// The console algorithm for PC is included
+				// for developers targeting really low spec machines.
+				// Likely better to just run FXAA_PC, and use a really low preset.
+				//
+				#define FXAA_PC_CONSOLE 0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_GLSL_120
+				#define FXAA_GLSL_120 0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_GLSL_130
+				#define FXAA_GLSL_130 0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_HLSL_3
+				#define FXAA_HLSL_3 0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_HLSL_4
+				#define FXAA_HLSL_4 0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_HLSL_5
+				#define FXAA_HLSL_5 0
+		#endif
+		/*==========================================================================*/
+		#ifndef FXAA_GREEN_AS_LUMA
+				//
+				// For those using non-linear color,
+				// and either not able to get luma in alpha, or not wanting to,
+				// this enables FXAA to run using green as a proxy for luma.
+				// So with this enabled, no need to pack luma in alpha.
+				//
+				// This will turn off AA on anything which lacks some amount of green.
+				// Pure red and blue or combination of only R and B, will get no AA.
+				//
+				// Might want to lower the settings for both,
+				//		fxaaConsoleEdgeThresholdMin
+				//		fxaaQualityEdgeThresholdMin
+				// In order to insure AA does not get turned off on colors
+				// which contain a minor amount of green.
+				//
+				// 1 = On.
+				// 0 = Off.
+				//
+				#define FXAA_GREEN_AS_LUMA 0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_EARLY_EXIT
+				//
+				// Controls algorithm\'s early exit path.
+				// On PS3 turning this ON adds 2 cycles to the shader.
+				// On 360 turning this OFF adds 10ths of a millisecond to the shader.
+				// Turning this off on console will result in a more blurry image.
+				// So this defaults to on.
+				//
+				// 1 = On.
+				// 0 = Off.
+				//
+				#define FXAA_EARLY_EXIT 1
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_DISCARD
+				//
+				// Only valid for PC OpenGL currently.
+				// Probably will not work when FXAA_GREEN_AS_LUMA = 1.
+				//
+				// 1 = Use discard on pixels which don\'t need AA.
+				//		 For APIs which enable concurrent TEX+ROP from same surface.
+				// 0 = Return unchanged color on pixels which don\'t need AA.
+				//
+				#define FXAA_DISCARD 0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_FAST_PIXEL_OFFSET
+				//
+				// Used for GLSL 120 only.
+				//
+				// 1 = GL API supports fast pixel offsets
+				// 0 = do not use fast pixel offsets
+				//
+				#ifdef GL_EXT_gpu_shader4
+						#define FXAA_FAST_PIXEL_OFFSET 1
+				#endif
+				#ifdef GL_NV_gpu_shader5
+						#define FXAA_FAST_PIXEL_OFFSET 1
+				#endif
+				#ifdef GL_ARB_gpu_shader5
+						#define FXAA_FAST_PIXEL_OFFSET 1
+				#endif
+				#ifndef FXAA_FAST_PIXEL_OFFSET
+						#define FXAA_FAST_PIXEL_OFFSET 0
+				#endif
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#ifndef FXAA_GATHER4_ALPHA
+				//
+				// 1 = API supports gather4 on alpha channel.
+				// 0 = API does not support gather4 on alpha channel.
+				//
+				#if (FXAA_HLSL_5 == 1)
+						#define FXAA_GATHER4_ALPHA 1
+				#endif
+				#ifdef GL_ARB_gpu_shader5
+						#define FXAA_GATHER4_ALPHA 1
+				#endif
+				#ifdef GL_NV_gpu_shader5
+						#define FXAA_GATHER4_ALPHA 1
+				#endif
+				#ifndef FXAA_GATHER4_ALPHA
+						#define FXAA_GATHER4_ALPHA 0
+				#endif
+		#endif
+
+
+		/*============================================================================
+														FXAA QUALITY - TUNING KNOBS
+		------------------------------------------------------------------------------
+		NOTE the other tuning knobs are now in the shader function inputs!
+		============================================================================*/
+		#ifndef FXAA_QUALITY_PRESET
+				//
+				// Choose the quality preset.
+				// This needs to be compiled into the shader as it effects code.
+				// Best option to include multiple presets is to
+				// in each shader define the preset, then include this file.
+				//
+				// OPTIONS
+				// -----------------------------------------------------------------------
+				// 10 to 15 - default medium dither (10=fastest, 15=highest quality)
+				// 20 to 29 - less dither, more expensive (20=fastest, 29=highest quality)
+				// 39			 - no dither, very expensive
+				//
+				// NOTES
+				// -----------------------------------------------------------------------
+				// 12 = slightly faster then FXAA 3.9 and higher edge quality (default)
+				// 13 = about same speed as FXAA 3.9 and better than 12
+				// 23 = closest to FXAA 3.9 visually and performance wise
+				//	_ = the lowest digit is directly related to performance
+				// _	= the highest digit is directly related to style
+				//
+				#define FXAA_QUALITY_PRESET 12
+		#endif
+
+
+		/*============================================================================
+
+															 FXAA QUALITY - PRESETS
+
+		============================================================================*/
+
+		/*============================================================================
+												 FXAA QUALITY - MEDIUM DITHER PRESETS
+		============================================================================*/
+		#if (FXAA_QUALITY_PRESET == 10)
+				#define FXAA_QUALITY_PS 3
+				#define FXAA_QUALITY_P0 1.5
+				#define FXAA_QUALITY_P1 3.0
+				#define FXAA_QUALITY_P2 12.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 11)
+				#define FXAA_QUALITY_PS 4
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 3.0
+				#define FXAA_QUALITY_P3 12.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 12)
+				#define FXAA_QUALITY_PS 5
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 4.0
+				#define FXAA_QUALITY_P4 12.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 13)
+				#define FXAA_QUALITY_PS 6
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 4.0
+				#define FXAA_QUALITY_P5 12.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 14)
+				#define FXAA_QUALITY_PS 7
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 4.0
+				#define FXAA_QUALITY_P6 12.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 15)
+				#define FXAA_QUALITY_PS 8
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 2.0
+				#define FXAA_QUALITY_P6 4.0
+				#define FXAA_QUALITY_P7 12.0
+		#endif
+
+		/*============================================================================
+												 FXAA QUALITY - LOW DITHER PRESETS
+		============================================================================*/
+		#if (FXAA_QUALITY_PRESET == 20)
+				#define FXAA_QUALITY_PS 3
+				#define FXAA_QUALITY_P0 1.5
+				#define FXAA_QUALITY_P1 2.0
+				#define FXAA_QUALITY_P2 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 21)
+				#define FXAA_QUALITY_PS 4
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 22)
+				#define FXAA_QUALITY_PS 5
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 23)
+				#define FXAA_QUALITY_PS 6
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 24)
+				#define FXAA_QUALITY_PS 7
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 3.0
+				#define FXAA_QUALITY_P6 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 25)
+				#define FXAA_QUALITY_PS 8
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 2.0
+				#define FXAA_QUALITY_P6 4.0
+				#define FXAA_QUALITY_P7 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 26)
+				#define FXAA_QUALITY_PS 9
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 2.0
+				#define FXAA_QUALITY_P6 2.0
+				#define FXAA_QUALITY_P7 4.0
+				#define FXAA_QUALITY_P8 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 27)
+				#define FXAA_QUALITY_PS 10
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 2.0
+				#define FXAA_QUALITY_P6 2.0
+				#define FXAA_QUALITY_P7 2.0
+				#define FXAA_QUALITY_P8 4.0
+				#define FXAA_QUALITY_P9 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 28)
+				#define FXAA_QUALITY_PS 11
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 2.0
+				#define FXAA_QUALITY_P6 2.0
+				#define FXAA_QUALITY_P7 2.0
+				#define FXAA_QUALITY_P8 2.0
+				#define FXAA_QUALITY_P9 4.0
+				#define FXAA_QUALITY_P10 8.0
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_QUALITY_PRESET == 29)
+				#define FXAA_QUALITY_PS 12
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.5
+				#define FXAA_QUALITY_P2 2.0
+				#define FXAA_QUALITY_P3 2.0
+				#define FXAA_QUALITY_P4 2.0
+				#define FXAA_QUALITY_P5 2.0
+				#define FXAA_QUALITY_P6 2.0
+				#define FXAA_QUALITY_P7 2.0
+				#define FXAA_QUALITY_P8 2.0
+				#define FXAA_QUALITY_P9 2.0
+				#define FXAA_QUALITY_P10 4.0
+				#define FXAA_QUALITY_P11 8.0
+		#endif
+
+		/*============================================================================
+												 FXAA QUALITY - EXTREME QUALITY
+		============================================================================*/
+		#if (FXAA_QUALITY_PRESET == 39)
+				#define FXAA_QUALITY_PS 12
+				#define FXAA_QUALITY_P0 1.0
+				#define FXAA_QUALITY_P1 1.0
+				#define FXAA_QUALITY_P2 1.0
+				#define FXAA_QUALITY_P3 1.0
+				#define FXAA_QUALITY_P4 1.0
+				#define FXAA_QUALITY_P5 1.5
+				#define FXAA_QUALITY_P6 2.0
+				#define FXAA_QUALITY_P7 2.0
+				#define FXAA_QUALITY_P8 2.0
+				#define FXAA_QUALITY_P9 2.0
+				#define FXAA_QUALITY_P10 4.0
+				#define FXAA_QUALITY_P11 8.0
+		#endif
+
+
+
+		/*============================================================================
+
+																		API PORTING
+
+		============================================================================*/
+		#if (FXAA_GLSL_100 == 1) || (FXAA_GLSL_120 == 1) || (FXAA_GLSL_130 == 1)
+				#define FxaaBool bool
+				#define FxaaDiscard discard
+				#define FxaaFloat float
+				#define FxaaFloat2 vec2
+				#define FxaaFloat3 vec3
+				#define FxaaFloat4 vec4
+				#define FxaaHalf float
+				#define FxaaHalf2 vec2
+				#define FxaaHalf3 vec3
+				#define FxaaHalf4 vec4
+				#define FxaaInt2 ivec2
+				#define FxaaSat(x) clamp(x, 0.0, 1.0)
+				#define FxaaTex sampler2D
+		#else
+				#define FxaaBool bool
+				#define FxaaDiscard clip(-1)
+				#define FxaaFloat float
+				#define FxaaFloat2 float2
+				#define FxaaFloat3 float3
+				#define FxaaFloat4 float4
+				#define FxaaHalf half
+				#define FxaaHalf2 half2
+				#define FxaaHalf3 half3
+				#define FxaaHalf4 half4
+				#define FxaaSat(x) saturate(x)
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_GLSL_100 == 1)
+			#define FxaaTexTop(t, p) texture2D(t, p, 0.0)
+			#define FxaaTexOff(t, p, o, r) texture2D(t, p + (o * r), 0.0)
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_GLSL_120 == 1)
+				// Requires,
+				//	#version 120
+				// And at least,
+				//	#extension GL_EXT_gpu_shader4 : enable
+				//	(or set FXAA_FAST_PIXEL_OFFSET 1 to work like DX9)
+				#define FxaaTexTop(t, p) texture2DLod(t, p, 0.0)
+				#if (FXAA_FAST_PIXEL_OFFSET == 1)
+						#define FxaaTexOff(t, p, o, r) texture2DLodOffset(t, p, 0.0, o)
+				#else
+						#define FxaaTexOff(t, p, o, r) texture2DLod(t, p + (o * r), 0.0)
+				#endif
+				#if (FXAA_GATHER4_ALPHA == 1)
+						// use #extension GL_ARB_gpu_shader5 : enable
+						#define FxaaTexAlpha4(t, p) textureGather(t, p, 3)
+						#define FxaaTexOffAlpha4(t, p, o) textureGatherOffset(t, p, o, 3)
+						#define FxaaTexGreen4(t, p) textureGather(t, p, 1)
+						#define FxaaTexOffGreen4(t, p, o) textureGatherOffset(t, p, o, 1)
+				#endif
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_GLSL_130 == 1)
+				// Requires "#version 130" or better
+				#define FxaaTexTop(t, p) textureLod(t, p, 0.0)
+				#define FxaaTexOff(t, p, o, r) textureLodOffset(t, p, 0.0, o)
+				#if (FXAA_GATHER4_ALPHA == 1)
+						// use #extension GL_ARB_gpu_shader5 : enable
+						#define FxaaTexAlpha4(t, p) textureGather(t, p, 3)
+						#define FxaaTexOffAlpha4(t, p, o) textureGatherOffset(t, p, o, 3)
+						#define FxaaTexGreen4(t, p) textureGather(t, p, 1)
+						#define FxaaTexOffGreen4(t, p, o) textureGatherOffset(t, p, o, 1)
+				#endif
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_HLSL_3 == 1)
+				#define FxaaInt2 float2
+				#define FxaaTex sampler2D
+				#define FxaaTexTop(t, p) tex2Dlod(t, float4(p, 0.0, 0.0))
+				#define FxaaTexOff(t, p, o, r) tex2Dlod(t, float4(p + (o * r), 0, 0))
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_HLSL_4 == 1)
+				#define FxaaInt2 int2
+				struct FxaaTex { SamplerState smpl; Texture2D tex; };
+				#define FxaaTexTop(t, p) t.tex.SampleLevel(t.smpl, p, 0.0)
+				#define FxaaTexOff(t, p, o, r) t.tex.SampleLevel(t.smpl, p, 0.0, o)
+		#endif
+		/*--------------------------------------------------------------------------*/
+		#if (FXAA_HLSL_5 == 1)
+				#define FxaaInt2 int2
+				struct FxaaTex { SamplerState smpl; Texture2D tex; };
+				#define FxaaTexTop(t, p) t.tex.SampleLevel(t.smpl, p, 0.0)
+				#define FxaaTexOff(t, p, o, r) t.tex.SampleLevel(t.smpl, p, 0.0, o)
+				#define FxaaTexAlpha4(t, p) t.tex.GatherAlpha(t.smpl, p)
+				#define FxaaTexOffAlpha4(t, p, o) t.tex.GatherAlpha(t.smpl, p, o)
+				#define FxaaTexGreen4(t, p) t.tex.GatherGreen(t.smpl, p)
+				#define FxaaTexOffGreen4(t, p, o) t.tex.GatherGreen(t.smpl, p, o)
+		#endif
+
+
+		/*============================================================================
+											 GREEN AS LUMA OPTION SUPPORT FUNCTION
+		============================================================================*/
+		#if (FXAA_GREEN_AS_LUMA == 0)
+				FxaaFloat FxaaLuma(FxaaFloat4 rgba) { return rgba.w; }
+		#else
+				FxaaFloat FxaaLuma(FxaaFloat4 rgba) { return rgba.y; }
+		#endif
+
+
+
+
+		/*============================================================================
+
+																 FXAA3 QUALITY - PC
+
+		============================================================================*/
+		#if (FXAA_PC == 1)
+		/*--------------------------------------------------------------------------*/
+		FxaaFloat4 FxaaPixelShader(
+				//
+				// Use noperspective interpolation here (turn off perspective interpolation).
+				// {xy} = center of pixel
+				FxaaFloat2 pos,
+				//
+				// Used only for FXAA Console, and not used on the 360 version.
+				// Use noperspective interpolation here (turn off perspective interpolation).
+				// {xy_} = upper left of pixel
+				// {_zw} = lower right of pixel
+				FxaaFloat4 fxaaConsolePosPos,
+				//
+				// Input color texture.
+				// {rgb_} = color in linear or perceptual color space
+				// if (FXAA_GREEN_AS_LUMA == 0)
+				//		 {__a} = luma in perceptual color space (not linear)
+				FxaaTex tex,
+				//
+				// Only used on the optimized 360 version of FXAA Console.
+				// For everything but 360, just use the same input here as for "tex".
+				// For 360, same texture, just alias with a 2nd sampler.
+				// This sampler needs to have an exponent bias of -1.
+				FxaaTex fxaaConsole360TexExpBiasNegOne,
+				//
+				// Only used on the optimized 360 version of FXAA Console.
+				// For everything but 360, just use the same input here as for "tex".
+				// For 360, same texture, just alias with a 3nd sampler.
+				// This sampler needs to have an exponent bias of -2.
+				FxaaTex fxaaConsole360TexExpBiasNegTwo,
+				//
+				// Only used on FXAA Quality.
+				// This must be from a constant/uniform.
+				// {x_} = 1.0/screenWidthInPixels
+				// {_y} = 1.0/screenHeightInPixels
+				FxaaFloat2 fxaaQualityRcpFrame,
+				//
+				// Only used on FXAA Console.
+				// This must be from a constant/uniform.
+				// This effects sub-pixel AA quality and inversely sharpness.
+				//	 Where N ranges between,
+				//		 N = 0.50 (default)
+				//		 N = 0.33 (sharper)
+				// {x__} = -N/screenWidthInPixels
+				// {_y_} = -N/screenHeightInPixels
+				// {_z_} =	N/screenWidthInPixels
+				// {__w} =	N/screenHeightInPixels
+				FxaaFloat4 fxaaConsoleRcpFrameOpt,
+				//
+				// Only used on FXAA Console.
+				// Not used on 360, but used on PS3 and PC.
+				// This must be from a constant/uniform.
+				// {x__} = -2.0/screenWidthInPixels
+				// {_y_} = -2.0/screenHeightInPixels
+				// {_z_} =	2.0/screenWidthInPixels
+				// {__w} =	2.0/screenHeightInPixels
+				FxaaFloat4 fxaaConsoleRcpFrameOpt2,
+				//
+				// Only used on FXAA Console.
+				// Only used on 360 in place of fxaaConsoleRcpFrameOpt2.
+				// This must be from a constant/uniform.
+				// {x__} =	8.0/screenWidthInPixels
+				// {_y_} =	8.0/screenHeightInPixels
+				// {_z_} = -4.0/screenWidthInPixels
+				// {__w} = -4.0/screenHeightInPixels
+				FxaaFloat4 fxaaConsole360RcpFrameOpt2,
+				//
+				// Only used on FXAA Quality.
+				// This used to be the FXAA_QUALITY_SUBPIX define.
+				// It is here now to allow easier tuning.
+				// Choose the amount of sub-pixel aliasing removal.
+				// This can effect sharpness.
+				//	 1.00 - upper limit (softer)
+				//	 0.75 - default amount of filtering
+				//	 0.50 - lower limit (sharper, less sub-pixel aliasing removal)
+				//	 0.25 - almost off
+				//	 0.00 - completely off
+				FxaaFloat fxaaQualitySubpix,
+				//
+				// Only used on FXAA Quality.
+				// This used to be the FXAA_QUALITY_EDGE_THRESHOLD define.
+				// It is here now to allow easier tuning.
+				// The minimum amount of local contrast required to apply algorithm.
+				//	 0.333 - too little (faster)
+				//	 0.250 - low quality
+				//	 0.166 - default
+				//	 0.125 - high quality
+				//	 0.063 - overkill (slower)
+				FxaaFloat fxaaQualityEdgeThreshold,
+				//
+				// Only used on FXAA Quality.
+				// This used to be the FXAA_QUALITY_EDGE_THRESHOLD_MIN define.
+				// It is here now to allow easier tuning.
+				// Trims the algorithm from processing darks.
+				//	 0.0833 - upper limit (default, the start of visible unfiltered edges)
+				//	 0.0625 - high quality (faster)
+				//	 0.0312 - visible limit (slower)
+				// Special notes when using FXAA_GREEN_AS_LUMA,
+				//	 Likely want to set this to zero.
+				//	 As colors that are mostly not-green
+				//	 will appear very dark in the green channel!
+				//	 Tune by looking at mostly non-green content,
+				//	 then start at zero and increase until aliasing is a problem.
+				FxaaFloat fxaaQualityEdgeThresholdMin,
+				//
+				// Only used on FXAA Console.
+				// This used to be the FXAA_CONSOLE_EDGE_SHARPNESS define.
+				// It is here now to allow easier tuning.
+				// This does not effect PS3, as this needs to be compiled in.
+				//	 Use FXAA_CONSOLE_PS3_EDGE_SHARPNESS for PS3.
+				//	 Due to the PS3 being ALU bound,
+				//	 there are only three safe values here: 2 and 4 and 8.
+				//	 These options use the shaders ability to a free *|/ by 2|4|8.
+				// For all other platforms can be a non-power of two.
+				//	 8.0 is sharper (default!!!)
+				//	 4.0 is softer
+				//	 2.0 is really soft (good only for vector graphics inputs)
+				FxaaFloat fxaaConsoleEdgeSharpness,
+				//
+				// Only used on FXAA Console.
+				// This used to be the FXAA_CONSOLE_EDGE_THRESHOLD define.
+				// It is here now to allow easier tuning.
+				// This does not effect PS3, as this needs to be compiled in.
+				//	 Use FXAA_CONSOLE_PS3_EDGE_THRESHOLD for PS3.
+				//	 Due to the PS3 being ALU bound,
+				//	 there are only two safe values here: 1/4 and 1/8.
+				//	 These options use the shaders ability to a free *|/ by 2|4|8.
+				// The console setting has a different mapping than the quality setting.
+				// Other platforms can use other values.
+				//	 0.125 leaves less aliasing, but is softer (default!!!)
+				//	 0.25 leaves more aliasing, and is sharper
+				FxaaFloat fxaaConsoleEdgeThreshold,
+				//
+				// Only used on FXAA Console.
+				// This used to be the FXAA_CONSOLE_EDGE_THRESHOLD_MIN define.
+				// It is here now to allow easier tuning.
+				// Trims the algorithm from processing darks.
+				// The console setting has a different mapping than the quality setting.
+				// This only applies when FXAA_EARLY_EXIT is 1.
+				// This does not apply to PS3,
+				// PS3 was simplified to avoid more shader instructions.
+				//	 0.06 - faster but more aliasing in darks
+				//	 0.05 - default
+				//	 0.04 - slower and less aliasing in darks
+				// Special notes when using FXAA_GREEN_AS_LUMA,
+				//	 Likely want to set this to zero.
+				//	 As colors that are mostly not-green
+				//	 will appear very dark in the green channel!
+				//	 Tune by looking at mostly non-green content,
+				//	 then start at zero and increase until aliasing is a problem.
+				FxaaFloat fxaaConsoleEdgeThresholdMin,
+				//
+				// Extra constants for 360 FXAA Console only.
+				// Use zeros or anything else for other platforms.
+				// These must be in physical constant registers and NOT immediates.
+				// Immediates will result in compiler un-optimizing.
+				// {xyzw} = float4(1.0, -1.0, 0.25, -0.25)
+				FxaaFloat4 fxaaConsole360ConstDir
+		) {
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat2 posM;
+				posM.x = pos.x;
+				posM.y = pos.y;
+				#if (FXAA_GATHER4_ALPHA == 1)
+						#if (FXAA_DISCARD == 0)
+								FxaaFloat4 rgbyM = FxaaTexTop(tex, posM);
+								#if (FXAA_GREEN_AS_LUMA == 0)
+										#define lumaM rgbyM.w
+								#else
+										#define lumaM rgbyM.y
+								#endif
+						#endif
+						#if (FXAA_GREEN_AS_LUMA == 0)
+								FxaaFloat4 luma4A = FxaaTexAlpha4(tex, posM);
+								FxaaFloat4 luma4B = FxaaTexOffAlpha4(tex, posM, FxaaInt2(-1, -1));
+						#else
+								FxaaFloat4 luma4A = FxaaTexGreen4(tex, posM);
+								FxaaFloat4 luma4B = FxaaTexOffGreen4(tex, posM, FxaaInt2(-1, -1));
+						#endif
+						#if (FXAA_DISCARD == 1)
+								#define lumaM luma4A.w
+						#endif
+						#define lumaE luma4A.z
+						#define lumaS luma4A.x
+						#define lumaSE luma4A.y
+						#define lumaNW luma4B.w
+						#define lumaN luma4B.z
+						#define lumaW luma4B.x
+				#else
+						FxaaFloat4 rgbyM = FxaaTexTop(tex, posM);
+						#if (FXAA_GREEN_AS_LUMA == 0)
+								#define lumaM rgbyM.w
+						#else
+								#define lumaM rgbyM.y
+						#endif
+						#if (FXAA_GLSL_100 == 1)
+							FxaaFloat lumaS = FxaaLuma(FxaaTexOff(tex, posM, FxaaFloat2( 0.0, 1.0), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaE = FxaaLuma(FxaaTexOff(tex, posM, FxaaFloat2( 1.0, 0.0), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaN = FxaaLuma(FxaaTexOff(tex, posM, FxaaFloat2( 0.0,-1.0), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaW = FxaaLuma(FxaaTexOff(tex, posM, FxaaFloat2(-1.0, 0.0), fxaaQualityRcpFrame.xy));
+						#else
+							FxaaFloat lumaS = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2( 0, 1), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaE = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2( 1, 0), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaN = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2( 0,-1), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaW = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2(-1, 0), fxaaQualityRcpFrame.xy));
+						#endif
+				#endif
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat maxSM = max(lumaS, lumaM);
+				FxaaFloat minSM = min(lumaS, lumaM);
+				FxaaFloat maxESM = max(lumaE, maxSM);
+				FxaaFloat minESM = min(lumaE, minSM);
+				FxaaFloat maxWN = max(lumaN, lumaW);
+				FxaaFloat minWN = min(lumaN, lumaW);
+				FxaaFloat rangeMax = max(maxWN, maxESM);
+				FxaaFloat rangeMin = min(minWN, minESM);
+				FxaaFloat rangeMaxScaled = rangeMax * fxaaQualityEdgeThreshold;
+				FxaaFloat range = rangeMax - rangeMin;
+				FxaaFloat rangeMaxClamped = max(fxaaQualityEdgeThresholdMin, rangeMaxScaled);
+				FxaaBool earlyExit = range < rangeMaxClamped;
+		/*--------------------------------------------------------------------------*/
+				if(earlyExit)
+						#if (FXAA_DISCARD == 1)
+								FxaaDiscard;
+						#else
+								return rgbyM;
+						#endif
+		/*--------------------------------------------------------------------------*/
+				#if (FXAA_GATHER4_ALPHA == 0)
+						#if (FXAA_GLSL_100 == 1)
+							FxaaFloat lumaNW = FxaaLuma(FxaaTexOff(tex, posM, FxaaFloat2(-1.0,-1.0), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaSE = FxaaLuma(FxaaTexOff(tex, posM, FxaaFloat2( 1.0, 1.0), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaNE = FxaaLuma(FxaaTexOff(tex, posM, FxaaFloat2( 1.0,-1.0), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaSW = FxaaLuma(FxaaTexOff(tex, posM, FxaaFloat2(-1.0, 1.0), fxaaQualityRcpFrame.xy));
+						#else
+							FxaaFloat lumaNW = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2(-1,-1), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaSE = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2( 1, 1), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaNE = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2( 1,-1), fxaaQualityRcpFrame.xy));
+							FxaaFloat lumaSW = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2(-1, 1), fxaaQualityRcpFrame.xy));
+						#endif
+				#else
+						FxaaFloat lumaNE = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2(1, -1), fxaaQualityRcpFrame.xy));
+						FxaaFloat lumaSW = FxaaLuma(FxaaTexOff(tex, posM, FxaaInt2(-1, 1), fxaaQualityRcpFrame.xy));
+				#endif
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat lumaNS = lumaN + lumaS;
+				FxaaFloat lumaWE = lumaW + lumaE;
+				FxaaFloat subpixRcpRange = 1.0/range;
+				FxaaFloat subpixNSWE = lumaNS + lumaWE;
+				FxaaFloat edgeHorz1 = (-2.0 * lumaM) + lumaNS;
+				FxaaFloat edgeVert1 = (-2.0 * lumaM) + lumaWE;
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat lumaNESE = lumaNE + lumaSE;
+				FxaaFloat lumaNWNE = lumaNW + lumaNE;
+				FxaaFloat edgeHorz2 = (-2.0 * lumaE) + lumaNESE;
+				FxaaFloat edgeVert2 = (-2.0 * lumaN) + lumaNWNE;
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat lumaNWSW = lumaNW + lumaSW;
+				FxaaFloat lumaSWSE = lumaSW + lumaSE;
+				FxaaFloat edgeHorz4 = (abs(edgeHorz1) * 2.0) + abs(edgeHorz2);
+				FxaaFloat edgeVert4 = (abs(edgeVert1) * 2.0) + abs(edgeVert2);
+				FxaaFloat edgeHorz3 = (-2.0 * lumaW) + lumaNWSW;
+				FxaaFloat edgeVert3 = (-2.0 * lumaS) + lumaSWSE;
+				FxaaFloat edgeHorz = abs(edgeHorz3) + edgeHorz4;
+				FxaaFloat edgeVert = abs(edgeVert3) + edgeVert4;
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat subpixNWSWNESE = lumaNWSW + lumaNESE;
+				FxaaFloat lengthSign = fxaaQualityRcpFrame.x;
+				FxaaBool horzSpan = edgeHorz >= edgeVert;
+				FxaaFloat subpixA = subpixNSWE * 2.0 + subpixNWSWNESE;
+		/*--------------------------------------------------------------------------*/
+				if(!horzSpan) lumaN = lumaW;
+				if(!horzSpan) lumaS = lumaE;
+				if(horzSpan) lengthSign = fxaaQualityRcpFrame.y;
+				FxaaFloat subpixB = (subpixA * (1.0/12.0)) - lumaM;
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat gradientN = lumaN - lumaM;
+				FxaaFloat gradientS = lumaS - lumaM;
+				FxaaFloat lumaNN = lumaN + lumaM;
+				FxaaFloat lumaSS = lumaS + lumaM;
+				FxaaBool pairN = abs(gradientN) >= abs(gradientS);
+				FxaaFloat gradient = max(abs(gradientN), abs(gradientS));
+				if(pairN) lengthSign = -lengthSign;
+				FxaaFloat subpixC = FxaaSat(abs(subpixB) * subpixRcpRange);
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat2 posB;
+				posB.x = posM.x;
+				posB.y = posM.y;
+				FxaaFloat2 offNP;
+				offNP.x = (!horzSpan) ? 0.0 : fxaaQualityRcpFrame.x;
+				offNP.y = ( horzSpan) ? 0.0 : fxaaQualityRcpFrame.y;
+				if(!horzSpan) posB.x += lengthSign * 0.5;
+				if( horzSpan) posB.y += lengthSign * 0.5;
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat2 posN;
+				posN.x = posB.x - offNP.x * FXAA_QUALITY_P0;
+				posN.y = posB.y - offNP.y * FXAA_QUALITY_P0;
+				FxaaFloat2 posP;
+				posP.x = posB.x + offNP.x * FXAA_QUALITY_P0;
+				posP.y = posB.y + offNP.y * FXAA_QUALITY_P0;
+				FxaaFloat subpixD = ((-2.0)*subpixC) + 3.0;
+				FxaaFloat lumaEndN = FxaaLuma(FxaaTexTop(tex, posN));
+				FxaaFloat subpixE = subpixC * subpixC;
+				FxaaFloat lumaEndP = FxaaLuma(FxaaTexTop(tex, posP));
+		/*--------------------------------------------------------------------------*/
+				if(!pairN) lumaNN = lumaSS;
+				FxaaFloat gradientScaled = gradient * 1.0/4.0;
+				FxaaFloat lumaMM = lumaM - lumaNN * 0.5;
+				FxaaFloat subpixF = subpixD * subpixE;
+				FxaaBool lumaMLTZero = lumaMM < 0.0;
+		/*--------------------------------------------------------------------------*/
+				lumaEndN -= lumaNN * 0.5;
+				lumaEndP -= lumaNN * 0.5;
+				FxaaBool doneN = abs(lumaEndN) >= gradientScaled;
+				FxaaBool doneP = abs(lumaEndP) >= gradientScaled;
+				if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P1;
+				if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P1;
+				FxaaBool doneNP = (!doneN) || (!doneP);
+				if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P1;
+				if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P1;
+		/*--------------------------------------------------------------------------*/
+				if(doneNP) {
+						if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+						if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+						if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+						if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+						doneN = abs(lumaEndN) >= gradientScaled;
+						doneP = abs(lumaEndP) >= gradientScaled;
+						if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P2;
+						if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P2;
+						doneNP = (!doneN) || (!doneP);
+						if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P2;
+						if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P2;
+		/*--------------------------------------------------------------------------*/
+						#if (FXAA_QUALITY_PS > 3)
+						if(doneNP) {
+								if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+								if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+								if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+								if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+								doneN = abs(lumaEndN) >= gradientScaled;
+								doneP = abs(lumaEndP) >= gradientScaled;
+								if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P3;
+								if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P3;
+								doneNP = (!doneN) || (!doneP);
+								if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P3;
+								if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P3;
+		/*--------------------------------------------------------------------------*/
+								#if (FXAA_QUALITY_PS > 4)
+								if(doneNP) {
+										if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+										if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+										if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+										if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+										doneN = abs(lumaEndN) >= gradientScaled;
+										doneP = abs(lumaEndP) >= gradientScaled;
+										if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P4;
+										if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P4;
+										doneNP = (!doneN) || (!doneP);
+										if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P4;
+										if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P4;
+		/*--------------------------------------------------------------------------*/
+										#if (FXAA_QUALITY_PS > 5)
+										if(doneNP) {
+												if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+												if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+												if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+												if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+												doneN = abs(lumaEndN) >= gradientScaled;
+												doneP = abs(lumaEndP) >= gradientScaled;
+												if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P5;
+												if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P5;
+												doneNP = (!doneN) || (!doneP);
+												if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P5;
+												if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P5;
+		/*--------------------------------------------------------------------------*/
+												#if (FXAA_QUALITY_PS > 6)
+												if(doneNP) {
+														if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+														if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+														if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+														if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+														doneN = abs(lumaEndN) >= gradientScaled;
+														doneP = abs(lumaEndP) >= gradientScaled;
+														if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P6;
+														if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P6;
+														doneNP = (!doneN) || (!doneP);
+														if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P6;
+														if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P6;
+		/*--------------------------------------------------------------------------*/
+														#if (FXAA_QUALITY_PS > 7)
+														if(doneNP) {
+																if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+																if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+																if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+																if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+																doneN = abs(lumaEndN) >= gradientScaled;
+																doneP = abs(lumaEndP) >= gradientScaled;
+																if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P7;
+																if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P7;
+																doneNP = (!doneN) || (!doneP);
+																if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P7;
+																if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P7;
+		/*--------------------------------------------------------------------------*/
+				#if (FXAA_QUALITY_PS > 8)
+				if(doneNP) {
+						if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+						if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+						if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+						if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+						doneN = abs(lumaEndN) >= gradientScaled;
+						doneP = abs(lumaEndP) >= gradientScaled;
+						if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P8;
+						if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P8;
+						doneNP = (!doneN) || (!doneP);
+						if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P8;
+						if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P8;
+		/*--------------------------------------------------------------------------*/
+						#if (FXAA_QUALITY_PS > 9)
+						if(doneNP) {
+								if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+								if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+								if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+								if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+								doneN = abs(lumaEndN) >= gradientScaled;
+								doneP = abs(lumaEndP) >= gradientScaled;
+								if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P9;
+								if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P9;
+								doneNP = (!doneN) || (!doneP);
+								if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P9;
+								if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P9;
+		/*--------------------------------------------------------------------------*/
+								#if (FXAA_QUALITY_PS > 10)
+								if(doneNP) {
+										if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+										if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+										if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+										if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+										doneN = abs(lumaEndN) >= gradientScaled;
+										doneP = abs(lumaEndP) >= gradientScaled;
+										if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P10;
+										if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P10;
+										doneNP = (!doneN) || (!doneP);
+										if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P10;
+										if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P10;
+		/*--------------------------------------------------------------------------*/
+										#if (FXAA_QUALITY_PS > 11)
+										if(doneNP) {
+												if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+												if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+												if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+												if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+												doneN = abs(lumaEndN) >= gradientScaled;
+												doneP = abs(lumaEndP) >= gradientScaled;
+												if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P11;
+												if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P11;
+												doneNP = (!doneN) || (!doneP);
+												if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P11;
+												if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P11;
+		/*--------------------------------------------------------------------------*/
+												#if (FXAA_QUALITY_PS > 12)
+												if(doneNP) {
+														if(!doneN) lumaEndN = FxaaLuma(FxaaTexTop(tex, posN.xy));
+														if(!doneP) lumaEndP = FxaaLuma(FxaaTexTop(tex, posP.xy));
+														if(!doneN) lumaEndN = lumaEndN - lumaNN * 0.5;
+														if(!doneP) lumaEndP = lumaEndP - lumaNN * 0.5;
+														doneN = abs(lumaEndN) >= gradientScaled;
+														doneP = abs(lumaEndP) >= gradientScaled;
+														if(!doneN) posN.x -= offNP.x * FXAA_QUALITY_P12;
+														if(!doneN) posN.y -= offNP.y * FXAA_QUALITY_P12;
+														doneNP = (!doneN) || (!doneP);
+														if(!doneP) posP.x += offNP.x * FXAA_QUALITY_P12;
+														if(!doneP) posP.y += offNP.y * FXAA_QUALITY_P12;
+		/*--------------------------------------------------------------------------*/
+												}
+												#endif
+		/*--------------------------------------------------------------------------*/
+										}
+										#endif
+		/*--------------------------------------------------------------------------*/
+								}
+								#endif
+		/*--------------------------------------------------------------------------*/
+						}
+						#endif
+		/*--------------------------------------------------------------------------*/
+				}
+				#endif
+		/*--------------------------------------------------------------------------*/
+														}
+														#endif
+		/*--------------------------------------------------------------------------*/
+												}
+												#endif
+		/*--------------------------------------------------------------------------*/
+										}
+										#endif
+		/*--------------------------------------------------------------------------*/
+								}
+								#endif
+		/*--------------------------------------------------------------------------*/
+						}
+						#endif
+		/*--------------------------------------------------------------------------*/
+				}
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat dstN = posM.x - posN.x;
+				FxaaFloat dstP = posP.x - posM.x;
+				if(!horzSpan) dstN = posM.y - posN.y;
+				if(!horzSpan) dstP = posP.y - posM.y;
+		/*--------------------------------------------------------------------------*/
+				FxaaBool goodSpanN = (lumaEndN < 0.0) != lumaMLTZero;
+				FxaaFloat spanLength = (dstP + dstN);
+				FxaaBool goodSpanP = (lumaEndP < 0.0) != lumaMLTZero;
+				FxaaFloat spanLengthRcp = 1.0/spanLength;
+		/*--------------------------------------------------------------------------*/
+				FxaaBool directionN = dstN < dstP;
+				FxaaFloat dst = min(dstN, dstP);
+				FxaaBool goodSpan = directionN ? goodSpanN : goodSpanP;
+				FxaaFloat subpixG = subpixF * subpixF;
+				FxaaFloat pixelOffset = (dst * (-spanLengthRcp)) + 0.5;
+				FxaaFloat subpixH = subpixG * fxaaQualitySubpix;
+		/*--------------------------------------------------------------------------*/
+				FxaaFloat pixelOffsetGood = goodSpan ? pixelOffset : 0.0;
+				FxaaFloat pixelOffsetSubpix = max(pixelOffsetGood, subpixH);
+				if(!horzSpan) posM.x += pixelOffsetSubpix * lengthSign;
+				if( horzSpan) posM.y += pixelOffsetSubpix * lengthSign;
+				#if (FXAA_DISCARD == 1)
+						return FxaaTexTop(tex, posM);
+				#else
+						return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);
+				#endif
+		}
+		/*==========================================================================*/
+		#endif
+
+		void main() {
+			gl_FragColor = FxaaPixelShader(
+				vUv,
+				vec4(0.0),
+				tDiffuse,
+				tDiffuse,
+				tDiffuse,
+				resolution,
+				vec4(0.0),
+				vec4(0.0),
+				vec4(0.0),
+				0.75,
+				0.166,
+				0.0833,
+				0.0,
+				0.0,
+				0.0,
+				vec4(0.0)
+			);
+
+			// TODO avoid querying texture twice for same texel
+			gl_FragColor.a = texture2D(tDiffuse, vUv).a;
+		}`
+
+    };
+
+    // source: https://discourse.threejs.org/t/how-to-render-full-outlines-as-a-post-process-tutorial/22674
+    // Follows the structure of
+    // 		https://github.com/mrdoob/three.js/blob/master/examples/jsm/postprocessing/OutlinePass.js
+    class CustomOutlinePass extends Pass {
+        constructor(resolution, scene, camera) {
+            super();
+            this.renderScene = scene;
+            this.renderCamera = camera;
+            this.resolution = new Vector2(resolution.x, resolution.y);
+            // @ts-ignore
+            this.fsQuad = new FullScreenQuad(null);
+            this.fsQuad.material = this.createOutlinePostProcessMaterial();
+            // Create a buffer to store the normals of the scene onto
+            const normalTarget = new WebGLRenderTarget(this.resolution.x, this.resolution.y);
+            normalTarget.texture.format = RGBFormat;
+            normalTarget.texture.minFilter = NearestFilter;
+            normalTarget.texture.magFilter = NearestFilter;
+            normalTarget.texture.generateMipmaps = false;
+            normalTarget.stencilBuffer = false;
+            this.normalTarget = normalTarget;
+            this.normalOverrideMaterial = new MeshNormalMaterial();
         }
         dispose() {
-            this.events.onCameraReady.actions.length = 0;
-            this.events = null;
+            this.normalTarget.dispose();
+            this.normalTarget = null;
+            this.fsQuad.dispose();
+            this.fsQuad = null;
         }
-        subscribe(event, action) {
-            this.events[event].actions.push(action);
-            this.events[event].needsUpdate = true;
-            this.update(event);
+        setSize(width, height) {
+            this.normalTarget.setSize(width, height);
+            this.resolution.set(width * 2, height * 2);
+            // @ts-ignore
+            this.fsQuad.material.uniforms.screenSize.value.set(this.resolution.x, this.resolution.y, 1 / this.resolution.x, 1 / this.resolution.y);
         }
-        publish(event) {
-            this.events[event].published = true;
-            this.update(event);
-        }
-        update(event) {
-            if (this.events[event].needsUpdate && this.events[event].published) {
-                const actions = this.events[event].actions;
-                for (let i = 0; i < actions.length; i++) {
-                    actions[i]();
-                }
-                actions.length = 0;
+        render(renderer, writeBuffer, readBuffer) {
+            // Turn off writing to the depth buffer
+            // because we need to read from it in the subsequent passes.
+            const depthBufferValue = writeBuffer.depthBuffer;
+            writeBuffer.depthBuffer = false;
+            // 1. Re-render the scene to capture all normals in texture.
+            // Ideally we could capture this in the first render pass along with
+            // the depth texture.
+            renderer.setRenderTarget(this.normalTarget);
+            const overrideMaterialValue = this.renderScene.overrideMaterial;
+            this.renderScene.overrideMaterial = this.normalOverrideMaterial;
+            renderer.render(this.renderScene, this.renderCamera);
+            this.renderScene.overrideMaterial = overrideMaterialValue;
+            // @ts-ignore
+            this.fsQuad.material.uniforms.depthBuffer.value = readBuffer.depthTexture;
+            // @ts-ignore
+            this.fsQuad.material.uniforms.normalBuffer.value = this.normalTarget.texture;
+            // @ts-ignore
+            this.fsQuad.material.uniforms.sceneColorBuffer.value = readBuffer.texture;
+            // 2. Draw the outlines using the depth texture and normal texture
+            // and combine it with the scene color
+            if (this.renderToScreen) {
+                // If this is the last effect, then renderToScreen is true.
+                // So we should render to the screen by setting target null
+                // Otherwise, just render into the writeBuffer that the next effect will use as its read buffer.
+                renderer.setRenderTarget(null);
+                this.fsQuad.render(renderer);
             }
+            else {
+                renderer.setRenderTarget(writeBuffer);
+                this.fsQuad.render(renderer);
+            }
+            // Reset the depthBuffer value so we continue writing to it in the next render.
+            writeBuffer.depthBuffer = depthBufferValue;
+        }
+        get vertexShader() {
+            return `
+			varying vec2 vUv;
+			void main() {
+			  vUv = uv;
+			  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			}
+			`;
+        }
+        get fragmentShader() {
+            return `
+			#include <packing>
+			// The above include imports "perspectiveDepthToViewZ"
+			// and other GLSL functions from ThreeJS we need for reading depth.
+			uniform sampler2D sceneColorBuffer;
+			uniform sampler2D depthBuffer;
+			uniform sampler2D normalBuffer;
+			uniform float cameraNear;
+  		uniform float cameraFar;
+  		uniform vec4 screenSize;
+      uniform vec3 outlineColor;
+      uniform vec4 multiplierParameters;
+      uniform int debugVisualize;
+
+			varying vec2 vUv;
+
+			// Helper functions for reading from depth buffer.
+			float readDepth (sampler2D depthSampler, vec2 coord) {
+				float fragCoordZ = texture2D(depthSampler, coord).x;
+				float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );
+				return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );
+			}
+			float getLinearDepth(vec3 pos) {
+				return -(viewMatrix * vec4(pos, 1.0)).z;
+			}
+
+			float getLinearScreenDepth(sampler2D map) {
+		    	vec2 uv = gl_FragCoord.xy * screenSize.zw;
+		    	return readDepth(map,uv);
+			}
+			// Helper functions for reading normals and depth of neighboring pixels.
+			float getPixelDepth(int x, int y) {
+				// screenSize.zw is pixel size 
+				// vUv is current position
+				return readDepth(depthBuffer, vUv + screenSize.zw * vec2(x, y));
+			}
+			vec3 getPixelNormal(int x, int y) {
+				return texture2D(normalBuffer, vUv + screenSize.zw * vec2(x, y)).rgb;
+			}
+
+      float saturate(float num) {
+        return clamp(num, 0.0, 1.0);
+      }
+
+			void main() {
+				vec4 sceneColor = texture2D(sceneColorBuffer, vUv);
+				float depth = getPixelDepth(0, 0);
+				vec3 normal = getPixelNormal(0, 0);
+
+				// Get the difference between depth of neighboring pixels and current.
+				float depthDiff = 0.0;
+		  	depthDiff += abs(depth - getPixelDepth(1, 0));
+		  	depthDiff += abs(depth - getPixelDepth(-1, 0));
+		  	depthDiff += abs(depth - getPixelDepth(0, 1));
+		  	depthDiff += abs(depth - getPixelDepth(0, -1));
+
+		  	// Get the difference between normals of neighboring pixels and current
+		  	float normalDiff = 0.0;
+		  	normalDiff += distance(normal, getPixelNormal(1, 0));
+		  	normalDiff += distance(normal, getPixelNormal(0, 1));
+		  	normalDiff += distance(normal, getPixelNormal(0, 1));
+		  	normalDiff += distance(normal, getPixelNormal(0, -1));
+
+        normalDiff += distance(normal, getPixelNormal(1, 1));
+        normalDiff += distance(normal, getPixelNormal(1, -1));
+        normalDiff += distance(normal, getPixelNormal(-1, 1));
+        normalDiff += distance(normal, getPixelNormal(-1, -1));
+
+        // Apply multiplier & bias to each 
+        float depthBias = multiplierParameters.x;
+        float depthMultiplier = multiplierParameters.y;
+        float normalBias = multiplierParameters.z;
+        float normalMultiplier = multiplierParameters.w;
+
+        depthDiff = depthDiff * depthMultiplier;
+        depthDiff = saturate(depthDiff);
+        depthDiff = pow(depthDiff, depthBias);
+
+        normalDiff = normalDiff * normalMultiplier;
+        normalDiff = saturate(normalDiff);
+        normalDiff = pow(normalDiff, normalBias);
+
+
+		  	float outline = normalDiff + depthDiff;
+			
+		  	// Combine outline with scene color.
+		  	vec4 outlineColor = vec4(outlineColor, 1.0);
+		  	gl_FragColor = vec4(mix(sceneColor, outlineColor, outline));
+
+        // For debug visualization of the different inputs to this shader.
+        if (debugVisualize == 1) {
+          gl_FragColor = sceneColor;
+        }
+        if (debugVisualize == 2) {
+          gl_FragColor = vec4(vec3(depth), 1.0);
+        }
+        if (debugVisualize == 3) {
+          gl_FragColor = vec4(normal, 1.0);
+        }
+        if (debugVisualize == 4) {
+          gl_FragColor = vec4(vec3(outline * outlineColor), 1.0);
+        }
+			}
+			`;
+        }
+        createOutlinePostProcessMaterial() {
+            return new ShaderMaterial({
+                uniforms: {
+                    debugVisualize: { value: 0 },
+                    // @ts-ignore
+                    sceneColorBuffer: {},
+                    // @ts-ignore
+                    depthBuffer: {},
+                    // @ts-ignore
+                    normalBuffer: {},
+                    outlineColor: { value: new Color(0xffffff) },
+                    // 4 scalar values packed in one uniform: depth multiplier, depth bias, and same for normals.
+                    multiplierParameters: { value: new Vector4(1, 1, 1, 1) },
+                    cameraNear: { value: this.renderCamera.near },
+                    cameraFar: { value: this.renderCamera.far },
+                    screenSize: {
+                        value: new Vector4(this.resolution.x, this.resolution.y, 1 / this.resolution.x, 1 / this.resolution.y)
+                    }
+                },
+                vertexShader: this.vertexShader,
+                fragmentShader: this.fragmentShader
+            });
         }
     }
 
-    class IfcPostproduction {
-        constructor(context, canvas) {
+    // source: https://discourse.threejs.org/t/how-to-render-full-outlines-as-a-post-process-tutorial/22674
+    class Postproduction {
+        constructor(context, renderer) {
             this.context = context;
+            this.renderer = renderer;
+            this.htmlOverlay = document.createElement('img');
+            this.excludedItems = new Set();
             this.initialized = false;
-            this.notInitializedError = 'You have not initialized the postproduction library';
-            this.renderer = new WebGLRenderer({
-                canvas,
-                powerPreference: 'high-performance',
-                antialias: false,
-                stencil: false,
-                depth: false
-            });
-            this.renderer.localClippingEnabled = true;
+            this.visibilityField = 'ifcjsPostproductionVisible';
+            this.isUserControllingCamera = false;
+            this.isControlSleeping = true;
+            this.lastWheelUsed = 0;
+            this.isActive = false;
+            this.isVisible = false;
+            this.outlineParams = {
+                mode: { Mode: 0 },
+                FXAA: true,
+                outlineColor: 0x777777,
+                depthBias: 16,
+                depthMult: 83,
+                normalBias: 5,
+                normalMult: 1.0
+            };
+            this.onControlStart = () => (this.isUserControllingCamera = true);
+            this.onWake = () => (this.isControlSleeping = false);
+            this.onControl = () => {
+                this.visible = false;
+            };
+            this.onControlEnd = () => {
+                this.isUserControllingCamera = false;
+                if (!this.isUserControllingCamera && this.isControlSleeping) {
+                    this.visible = true;
+                }
+            };
+            this.onWheel = () => {
+                this.lastWheelUsed = performance.now();
+            };
+            this.onSleep = () => {
+                // This prevents that this gets triggered a million times when zooming with the wheel
+                this.isControlSleeping = true;
+                const currentWheel = performance.now();
+                setTimeout(() => {
+                    if (this.lastWheelUsed > currentWheel)
+                        return;
+                    if (!this.isUserControllingCamera && this.isControlSleeping) {
+                        this.visible = true;
+                    }
+                }, 200);
+            };
+            this.renderTarget = this.newRenderTarget();
+            this.composer = new EffectComposer(renderer, this.renderTarget);
+            this.composer.setSize(window.innerWidth, window.innerHeight);
+        }
+        get active() {
+            return this.isActive;
+        }
+        set active(active) {
+            if (this.isActive === active)
+                return;
+            if (!this.initialized)
+                this.tryToInitialize();
+            this.visible = active;
+            this.isActive = active;
+        }
+        get visible() {
+            return this.isVisible;
+        }
+        set visible(visible) {
+            if (!this.isActive)
+                return;
+            this.isVisible = visible;
+            if (visible)
+                this.update();
+            this.htmlOverlay.style.visibility = visible ? 'visible' : 'collapse';
+        }
+        get outlineColor() {
+            return this.outlineParams.outlineColor;
+        }
+        set outlineColor(color) {
+            this.outlineParams.outlineColor = color;
+            this.outlineUniforms.outlineColor.value.set(color);
+        }
+        get sao() {
+            var _a;
+            return (_a = this.saoPass) === null || _a === void 0 ? void 0 : _a.params;
         }
         dispose() {
-            this.renderer.dispose();
-            if (this.initialized) {
-                this.renderer = null;
-                this.BlendFunction = null;
-                this.EffectComposer = null;
-                this.EffectPass = null;
-                this.NormalPass = null;
-                this.RenderPass = null;
-                this.SSAOEffect = null;
-                this.composer = null;
-            }
-        }
-        get domElement() {
-            return this.renderer.domElement;
-        }
-        // Depending on this library has given some issues in the past
-        // It's better to avoid that dependency and allow users that want to use it to give us this objects instead
-        initializePostprocessing(postproduction) {
-            this.BlendFunction = postproduction.BlendFunction;
-            this.EffectComposer = postproduction.EffectComposer;
-            this.EffectPass = postproduction.EffectPass;
-            this.NormalPass = postproduction.NormalPass;
-            this.RenderPass = postproduction.RenderPass;
-            this.SSAOEffect = postproduction.SSAOEffect;
-            this.composer = new this.EffectComposer(this.renderer);
-            this.setupEvents();
-            this.initialized = true;
-        }
-        render() {
-            if (!this.initialized)
-                throw new Error(this.notInitializedError);
-            this.composer.render();
+            var _a, _b;
+            this.active = false;
+            this.renderTarget.dispose();
+            this.renderTarget = null;
+            (_a = this.depthTexture) === null || _a === void 0 ? void 0 : _a.dispose();
+            this.depthTexture = null;
+            (_b = this.customOutline) === null || _b === void 0 ? void 0 : _b.dispose();
+            this.customOutline = null;
+            this.composer = null;
+            this.excludedItems.clear();
+            this.excludedItems = null;
+            this.composer = null;
+            this.htmlOverlay.remove();
+            this.htmlOverlay = null;
+            this.outlineParams = null;
+            this.context = null;
+            this.renderer = null;
+            this.saoPass = null;
+            this.outlineUniforms = null;
         }
         setSize(width, height) {
-            if (!this.initialized)
-                return;
             this.composer.setSize(width, height);
         }
+        update() {
+            if (!this.initialized || !this.isActive)
+                return;
+            this.hideExcludedItems();
+            this.composer.render();
+            this.htmlOverlay.src = this.renderer.domElement.toDataURL();
+            this.showExcludedItems();
+        }
+        hideExcludedItems() {
+            for (const object of this.excludedItems) {
+                object.userData[this.visibilityField] = object.visible;
+                object.visible = false;
+            }
+        }
+        showExcludedItems() {
+            for (const object of this.excludedItems) {
+                if (object.userData[this.visibilityField] !== undefined) {
+                    object.visible = object.userData[this.visibilityField];
+                }
+            }
+        }
+        tryToInitialize() {
+            const scene = this.context.getScene();
+            const camera = this.context.getCamera();
+            if (!scene || !camera)
+                return;
+            this.renderer.clippingPlanes = this.context.getClippingPlanes();
+            this.setupEvents();
+            this.addBasePass(scene, camera);
+            this.addSaoPass(scene, camera);
+            this.addOutlinePass(scene, camera);
+            this.addAntialiasPass();
+            this.setupHtmlOverlay();
+            this.initialized = true;
+        }
         setupEvents() {
-            const createPasses = (scene, camera) => {
-                const normalPass = new this.NormalPass(scene, camera, {
-                    resolutionScale: 1.0
-                });
-                this.ssaoEffect = new this.SSAOEffect(camera, normalPass.renderTarget.texture, {
-                    blendFunction: this.BlendFunction.MULTIPLY,
-                    // blendFunction: POSTPROCESSING.BlendFunction.ALPHA,
-                    samples: 32,
-                    rings: 5,
-                    distanceThreshold: 0.0,
-                    distanceFalloff: 1.0,
-                    rangeThreshold: 0.0,
-                    rangeFalloff: 1.0,
-                    luminanceInfluence: 0.0,
-                    scale: 0.6,
-                    radius: 0.03,
-                    bias: 0.03,
-                    intensity: 10.0
-                });
-                this.ssaoEffect.ssaoMaterial.uniforms.fade.value = 1;
-                this.ssaoEffect.resolution.scale = 1.5;
-                this.ssaoEffect.blendMode.opacity.value = 1.2;
-                // Scale, Bias and Opacity influence intensity.
-                this.ssaoEffect.blendMode.opacity.value = 1.0;
-                const renderPass = new this.RenderPass(scene, camera);
-                const effectPass = new this.EffectPass(camera, this.ssaoEffect);
-                effectPass.renderToScreen = true;
-                return [renderPass, normalPass, effectPass];
-            };
-            const setupPasses = (scene, camera) => {
-                const passes = createPasses(scene, camera);
-                passes.forEach((pass) => this.composer.addPass(pass));
-            };
-            this.context.events.subscribe(IfcEvent.onCameraReady, () => {
-                const scene = this.context.getScene();
-                const camera = this.context.ifcCamera;
-                camera.onChangeProjection.on((camera) => {
-                    this.composer.removeAllPasses();
-                    setupPasses(this.context.getScene(), camera);
-                });
-                setupPasses(scene, camera.activeCamera);
+            const controls = this.context.ifcCamera.cameraControls;
+            const domElement = this.context.getDomElement();
+            controls.addEventListener('control', this.onControl);
+            controls.addEventListener('controlstart', this.onControlStart);
+            controls.addEventListener('wake', this.onWake);
+            controls.addEventListener('controlend', this.onControlEnd);
+            domElement.addEventListener('wheel', this.onWheel);
+            controls.addEventListener('sleep', this.onSleep);
+        }
+        setupHtmlOverlay() {
+            this.context.getContainerElement().appendChild(this.htmlOverlay);
+            // @ts-ignore
+            this.htmlOverlay.style.mixBlendMode = 'darken';
+            this.htmlOverlay.style.position = 'absolute';
+            this.htmlOverlay.style.width = '100%';
+            this.htmlOverlay.style.height = '100%';
+            this.htmlOverlay.style.userSelect = 'none';
+            this.htmlOverlay.style.pointerEvents = 'none';
+            this.htmlOverlay.style.top = '0';
+            this.htmlOverlay.style.left = '0';
+        }
+        addAntialiasPass() {
+            const effectFXAA = new ShaderPass(FXAAShader);
+            effectFXAA.uniforms.resolution.value.set(1 / window.innerWidth, 1 / window.innerHeight);
+            this.composer.addPass(effectFXAA);
+        }
+        addOutlinePass(scene, camera) {
+            this.customOutline = new CustomOutlinePass(new Vector2(window.innerWidth, window.innerHeight), scene, camera);
+            // Initial values
+            // @ts-ignore
+            this.outlineUniforms = this.customOutline.fsQuad.material.uniforms;
+            this.outlineUniforms.outlineColor.value.set(this.outlineParams.outlineColor);
+            this.outlineUniforms.multiplierParameters.value.x = this.outlineParams.depthBias;
+            this.outlineUniforms.multiplierParameters.value.y = this.outlineParams.depthMult;
+            this.outlineUniforms.multiplierParameters.value.z = this.outlineParams.normalBias;
+            this.outlineUniforms.multiplierParameters.value.w = this.outlineParams.normalMult;
+            this.composer.addPass(this.customOutline);
+        }
+        addSaoPass(scene, camera) {
+            this.saoPass = new SAOPass(scene, camera, false, true);
+            this.composer.addPass(this.saoPass);
+            this.saoPass.enabled = true;
+            this.saoPass.params.saoIntensity = 0.01;
+            this.saoPass.params.saoBias = 0.5;
+            this.saoPass.params.saoBlurRadius = 8;
+            this.saoPass.params.saoBlurDepthCutoff = 0.0015;
+            this.saoPass.params.saoScale = 30;
+            this.saoPass.params.saoKernelRadius = 30;
+        }
+        addBasePass(scene, camera) {
+            const pass = new RenderPass(scene, camera);
+            this.composer.addPass(pass);
+        }
+        newRenderTarget() {
+            this.depthTexture = new DepthTexture(window.innerWidth, window.innerHeight);
+            return new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+                depthTexture: this.depthTexture,
+                depthBuffer: true
             });
         }
     }
@@ -101867,37 +105747,24 @@
     class IfcRenderer extends IfcComponent {
         constructor(context) {
             super(context);
-            this.basicRenderer = new WebGLRenderer({ antialias: true });
             this.renderer2D = new CSS2DRenderer();
-            this.renderer = this.basicRenderer;
-            this.postProductionActive = false;
             this.blocked = false;
             this.context = context;
             this.container = context.options.container;
+            this.renderer = new WebGLRenderer();
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             this.setupRenderers();
-            this.postProductionRenderer = new IfcPostproduction(this.context, this.basicRenderer.domElement);
+            this.postProduction = new Postproduction(this.context, this.renderer);
             this.adjustRendererSize();
-        }
-        get usePostproduction() {
-            return this.postProductionActive;
-        }
-        set usePostproduction(active) {
-            if (this.postProductionActive === active)
-                return;
-            this.postProductionActive = active;
-            this.renderer = active ? this.postProductionRenderer : this.basicRenderer;
-            if (!active)
-                this.restoreRendererBackgroundColor();
         }
         dispose() {
             var _a, _b;
-            this.basicRenderer.domElement.remove();
-            this.basicRenderer.dispose();
-            this.postProductionRenderer.dispose();
-            this.basicRenderer = null;
-            this.renderer2D = null;
-            this.postProductionRenderer = null;
+            this.renderer.domElement.remove();
+            this.renderer.dispose();
+            this.postProduction.dispose();
+            this.postProduction = null;
             this.renderer = null;
+            this.renderer2D = null;
             this.container = null;
             this.context = null;
             (_a = this.tempRenderer) === null || _a === void 0 ? void 0 : _a.dispose();
@@ -101912,16 +105779,18 @@
             this.renderer2D.render(scene, camera);
         }
         getSize() {
-            return new Vector2(this.basicRenderer.domElement.clientWidth, this.basicRenderer.domElement.clientHeight);
+            return new Vector2(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight);
         }
         adjustRendererSize() {
-            this.basicRenderer.setSize(this.container.clientWidth, this.container.clientHeight);
-            this.renderer2D.setSize(this.container.clientWidth, this.container.clientHeight);
-            this.postProductionRenderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            const width = this.container.clientWidth;
+            const height = this.container.clientHeight;
+            this.renderer.setSize(width, height);
+            this.postProduction.setSize(width, height);
+            this.renderer2D.setSize(width, height);
         }
         newScreenshot(camera, dimensions) {
             const previousDimensions = this.getSize();
-            const domElement = this.basicRenderer.domElement;
+            const domElement = this.renderer.domElement;
             const tempCanvas = domElement.cloneNode(true);
             // Using a new renderer to make screenshots without updating what the user sees in the canvas
             if (!this.tempRenderer) {
@@ -101943,15 +105812,12 @@
             return result;
         }
         setupRenderers() {
-            this.basicRenderer.localClippingEnabled = true;
-            this.container.appendChild(this.basicRenderer.domElement);
+            this.renderer.localClippingEnabled = true;
+            this.container.appendChild(this.renderer.domElement);
             this.renderer2D.domElement.style.position = 'absolute';
             this.renderer2D.domElement.style.top = '0px';
             this.renderer2D.domElement.style.pointerEvents = 'none';
             this.container.appendChild(this.renderer2D.domElement);
-        }
-        restoreRendererBackgroundColor() {
-            this.basicRenderer.setClearColor(new Color(0, 0, 0), 0);
         }
     }
 
@@ -107338,6 +111204,61 @@
         }
     }
 
+    var IfcEvent;
+    (function (IfcEvent) {
+        IfcEvent["onCameraReady"] = "onCameraReady";
+    })(IfcEvent || (IfcEvent = {}));
+    class IfcEvents {
+        constructor() {
+            this.events = {
+                [IfcEvent.onCameraReady]: {
+                    needsUpdate: false,
+                    published: false,
+                    actions: []
+                }
+            };
+        }
+        dispose() {
+            this.events.onCameraReady.actions.length = 0;
+            this.events = null;
+        }
+        subscribe(event, action) {
+            this.events[event].actions.push(action);
+            this.events[event].needsUpdate = true;
+            this.update(event);
+        }
+        publish(event) {
+            this.events[event].published = true;
+            this.update(event);
+        }
+        update(event) {
+            if (this.events[event].needsUpdate && this.events[event].published) {
+                const actions = this.events[event].actions;
+                for (let i = 0; i < actions.length; i++) {
+                    actions[i]();
+                }
+                actions.length = 0;
+            }
+        }
+    }
+
+    class IfcMouse {
+        constructor(domElement) {
+            this.position = new Vector2();
+            this.rawPosition = new Vector2();
+            this.setupMousePositionUpdate(domElement);
+        }
+        setupMousePositionUpdate(domElement) {
+            domElement.onmousemove = (event) => {
+                this.rawPosition.x = event.clientX;
+                this.rawPosition.y = event.clientY;
+                const bounds = domElement.getBoundingClientRect();
+                this.position.x = ((event.clientX - bounds.left) / (bounds.right - bounds.left)) * 2 - 1;
+                this.position.y = -((event.clientY - bounds.top) / (bounds.bottom - bounds.top)) * 2 + 1;
+            };
+        }
+    }
+
     class IfcContext {
         constructor(options) {
             this.stats = null;
@@ -107362,6 +111283,7 @@
             this.items = this.newItems();
             this.scene = new IfcScene(this);
             this.renderer = new IfcRenderer(this);
+            this.mouse = new IfcMouse(this.renderer.renderer.domElement);
             this.ifcCamera = new IfcCamera(this);
             this.events.publish(IfcEvent.onCameraReady);
             this.clippingPlanes = [];
@@ -107397,6 +111319,7 @@
             this.scene.dispose();
             this.scene = null;
             this.renderer.dispose();
+            this.mouse = null;
             this.renderer = null;
             this.events.dispose();
             this.events = null;
@@ -107412,7 +111335,7 @@
             return this.scene.scene;
         }
         getRenderer() {
-            return this.renderer.basicRenderer;
+            return this.renderer.renderer;
         }
         getRenderer2D() {
             return this.renderer.renderer2D;
@@ -107459,7 +111382,7 @@
                 zCoords += position.getZ(indices[i]);
                 counter++;
             }
-            return new Vector3(xCoords / counter, yCoords / counter, zCoords / counter);
+            return new Vector3(xCoords / counter + mesh.position.x, yCoords / counter + mesh.position.y, zCoords / counter + mesh.position.z);
         }
         // eslint-disable-next-line no-undef
         addComponent(component) {
@@ -114400,9 +118323,14 @@
             }
         }
         async getSiteCoords(modelID) {
-            const building = await this.getBuilding(modelID);
-            const sitePlace = building.ObjectPlacement.PlacementRelTo.RelativePlacement.Location;
-            return sitePlace.Coordinates.map((coord) => coord.value);
+            try {
+                const building = await this.getBuilding(modelID);
+                const sitePlace = building.ObjectPlacement.PlacementRelTo.RelativePlacement.Location;
+                return sitePlace.Coordinates.map((coord) => coord.value);
+            }
+            catch (e) {
+                return [0, 0, 0];
+            }
         }
         async getBuilding(modelID) {
             const allBuildingsIDs = await this.loader.ifcManager.getAllItemsOfType(modelID, IFCBUILDING, false);
@@ -114502,8 +118430,8 @@
             return mesh;
         }
         /**
-         * Load glTF and enable IFC.js tools over it. T
-         * his just works if the glTF was previously exported from an IFC model using `exportIfcAsGltf()`.
+         * Load glTF and enable IFC.js tools over it.
+         * This just works if the glTF was previously exported from an IFC model using `exportIfcAsGltf()`.
          * @url The URL of the GLTF file to load
          */
         async loadModel(url) {
@@ -115064,6 +118992,7 @@
             this.initializeShadow(model, shadow, scene, center);
             this.createPlanes(shadow, size);
             this.bakeShadow(model, shadow, scene);
+            this.context.renderer.postProduction.excludedItems.add(shadow.root);
         }
         deleteShadow(id) {
             const shadow = this.shadows[id];
@@ -115400,194 +119329,544 @@
         }
     }
 
-    class EdgesVectorizer {
-        constructor(
-        // eslint-disable-next-line no-undef
-        context, clipper, grid, axes) {
-            this.context = context;
-            this.clipper = clipper;
-            this.grid = grid;
-            this.axes = axes;
-            this.minimumOffset = 0.1;
-            this.buckets = [];
-            this.bucketsOffset = new Vector3();
-            this.polygons = [];
-            this.currentBucketIndex = 0;
-            this.dims = { pixels: new Vector2(), real: new Vector2() };
-            this.bucketMesh = new Mesh(new BoxGeometry(1, 1, 1));
-            this.cvCamera = context.ifcCamera.orthographicCamera.clone(false);
-            this.controls = context.ifcCamera.cameraControls;
-            // Every time the html image is updated, its vertices are processed by opencv
-            this.htmlImage = document.createElement('img');
-            this.htmlImage.onload = () => this.getEdges2DPoints();
-        }
-        dispose() {
-            this.cv = null;
-            this.cvCamera.removeFromParent();
-            this.cvCamera = null;
-            this.controls = null;
-            disposeMeshRecursively(this.bucketMesh);
-            this.htmlImage.remove();
-        }
-        initializeOpenCV(openCV) {
-            this.cv = openCV;
-        }
-        clear() {
-            this.polygons = [];
-            this.currentBucketIndex = 0;
-            this.buckets = [];
-            this.dims = { pixels: new Vector2(), real: new Vector2() };
-        }
-        async vectorize(bucketWidth) {
-            this.clear();
-            this.setupCamera();
-            this.updateBucketDimensions(bucketWidth);
-            const { size, center } = this.getSizeAndCenter();
-            this.computeBucketsOrigin(size, center);
-            this.generateAllBuckets(size, center);
-            this.toggleVisibility(false);
-            await this.renderBucket();
-        }
-        setupCamera() {
-            this.cvCamera.copy(this.context.ifcCamera.orthographicCamera);
-            this.controls.saveState();
-            this.controls.camera = this.cvCamera;
-        }
-        // Some elements don't need to be processed by opencv
-        toggleVisibility(visible) {
-            if (this.grid.grid)
-                this.grid.grid.visible = visible;
-            if (this.axes.axes)
-                this.axes.axes.visible = visible;
-            this.clipper.planes.forEach((plane) => {
-                Object.values(plane.edges.edges).forEach((edges) => {
-                    edges.mesh.visible = visible;
-                });
-            });
-        }
-        async renderBucket() {
-            const bucket = this.buckets[this.currentBucketIndex];
-            const controls = this.context.ifcCamera.cameraControls;
-            this.bucketMesh.position.copy(bucket.position);
-            await controls.fitToBox(this.bucketMesh, false);
-            controls.update(0);
-            this.htmlImage.src = await this.context.renderer.newScreenshot(this.cvCamera);
-        }
-        computeBucketsOrigin(size, center) {
-            this.bucketsOffset.copy(center);
-            this.bucketsOffset.x += -size.x / 2 - this.minimumOffset;
-            this.bucketsOffset.z += size.z / 2 + this.minimumOffset;
-        }
-        generateAllBuckets(size, center) {
-            this.buckets = [];
-            const { xCount, zCount } = this.getBucketCount(size);
-            for (let i = 0; i < xCount; i++) {
-                for (let j = 0; j < zCount; j++) {
-                    const position = this.getBucketPosition(size, center, i, j);
-                    this.buckets.push({ position, row: i, column: j });
+    /* eslint-disable */
+    const _upVector = new Vector3(0, 1, 0);
+    const EPSILON = 1e-16;
+    // Modified version of js EdgesGeometry logic to handle silhouette edges
+    const generateEdges = (function () {
+        const _v0 = new Vector3();
+        const _v1 = new Vector3();
+        const _normal = new Vector3();
+        const _triangle = new Triangle();
+        return function generateEdges(geometry, projectionDir, thresholdAngle = 1) {
+            const edges = [];
+            const precisionPoints = 4;
+            const precision = Math.pow(10, precisionPoints);
+            const thresholdDot = Math.cos(MathUtils.DEG2RAD * thresholdAngle);
+            const indexAttr = geometry.getIndex();
+            const positionAttr = geometry.getAttribute('position');
+            const indexCount = indexAttr ? indexAttr.count : positionAttr.count;
+            const indexArr = [0, 0, 0];
+            const vertKeys = ['a', 'b', 'c'];
+            const hashes = new Array(3);
+            const edgeData = {};
+            for (let i = 0; i < indexCount; i += 3) {
+                if (indexAttr) {
+                    indexArr[0] = indexAttr.getX(i);
+                    indexArr[1] = indexAttr.getX(i + 1);
+                    indexArr[2] = indexAttr.getX(i + 2);
+                }
+                else {
+                    indexArr[0] = i;
+                    indexArr[1] = i + 1;
+                    indexArr[2] = i + 2;
+                }
+                const { a, b, c } = _triangle;
+                a.fromBufferAttribute(positionAttr, indexArr[0]);
+                b.fromBufferAttribute(positionAttr, indexArr[1]);
+                c.fromBufferAttribute(positionAttr, indexArr[2]);
+                _triangle.getNormal(_normal);
+                // create hashes for the edge from the vertices
+                hashes[0] = `${Math.round(a.x * precision)},${Math.round(a.y * precision)},${Math.round(a.z * precision)}`;
+                hashes[1] = `${Math.round(b.x * precision)},${Math.round(b.y * precision)},${Math.round(b.z * precision)}`;
+                hashes[2] = `${Math.round(c.x * precision)},${Math.round(c.y * precision)},${Math.round(c.z * precision)}`;
+                // skip degenerate triangles
+                if (hashes[0] === hashes[1] || hashes[1] === hashes[2] || hashes[2] === hashes[0]) {
+                    continue;
+                }
+                // iterate over every edge
+                for (let j = 0; j < 3; j++) {
+                    // get the first and next vertex making up the edge
+                    const jNext = (j + 1) % 3;
+                    const vecHash0 = hashes[j];
+                    const vecHash1 = hashes[jNext];
+                    const v0 = _triangle[vertKeys[j]];
+                    const v1 = _triangle[vertKeys[jNext]];
+                    const hash = `${vecHash0}_${vecHash1}`;
+                    const reverseHash = `${vecHash1}_${vecHash0}`;
+                    if (reverseHash in edgeData && edgeData[reverseHash]) {
+                        // if we found a sibling edge add it into the vertex array if
+                        // it meets the angle threshold and delete the edge from the map.
+                        const otherNormal = edgeData[reverseHash].normal;
+                        const meetsThreshold = _normal.dot(otherNormal) <= thresholdDot;
+                        const projectionThreshold = Math.sign(projectionDir.dot(_normal)) !== Math.sign(projectionDir.dot(otherNormal));
+                        if (meetsThreshold || projectionThreshold) {
+                            const line = new Line3();
+                            line.start.copy(v0);
+                            line.end.copy(v1);
+                            edges.push(line);
+                        }
+                        edgeData[reverseHash] = null;
+                    }
+                    else if (!(hash in edgeData)) {
+                        // if we've already got an edge here then skip adding a new one
+                        edgeData[hash] = {
+                            index0: indexArr[j],
+                            index1: indexArr[jNext],
+                            normal: _normal.clone()
+                        };
+                    }
                 }
             }
-        }
-        getBucketPosition(size, center, row, column) {
-            const xPosition = row * this.dims.real.x;
-            const zPosition = column * this.dims.real.y;
-            const position = new Vector3();
-            position.x = center.x - size.x / 2 + this.dims.real.x / 2 + xPosition - this.minimumOffset;
-            position.z = center.z + size.z / 2 - this.dims.real.y / 2 - zPosition + this.minimumOffset;
-            return position;
-        }
-        getBucketCount(size) {
-            const xCount = Math.ceil(size.x / this.dims.real.x);
-            const zCount = Math.ceil(size.z / this.dims.real.y);
-            return { xCount, zCount };
-        }
-        updateBucketDimensions(bucketWidth) {
-            this.resetBucketDimensions();
-            this.dims.pixels = this.context.getDimensions();
-            // Buckets are proportional to viewport aspect
-            this.dims.real.x = bucketWidth;
-            this.dims.real.y = (bucketWidth * this.dims.pixels.y) / this.dims.pixels.x;
-            this.bucketMesh.geometry.scale(this.dims.real.x, 1, this.dims.real.y);
-            this.htmlImage.width = this.dims.pixels.x;
-            this.htmlImage.height = this.dims.pixels.y;
-        }
-        resetBucketDimensions() {
-            if (this.dims.real.x !== 0) {
-                this.bucketMesh.geometry.scale(1 / this.dims.real.x, 1, 1 / this.dims.real.y);
+            // iterate over all remaining, unmatched edges and add them to the vertex array
+            for (const key in edgeData) {
+                if (edgeData[key]) {
+                    const { index0, index1 } = edgeData[key];
+                    _v0.fromBufferAttribute(positionAttr, index0);
+                    _v1.fromBufferAttribute(positionAttr, index1);
+                    const line = new Line3();
+                    line.start.copy(_v0);
+                    line.end.copy(_v1);
+                    edges.push(line);
+                }
             }
-        }
-        getSizeAndCenter() {
-            const min = new Vector3();
-            const max = new Vector3();
-            this.context.items.ifcModels.forEach((model) => this.computeMinAndMax(min, max, model));
-            const center = new Vector3((min.x + max.x) / 2, (min.y + max.y) / 2, (min.z + max.z) / 2);
-            const size = new Vector3(max.x - min.x, max.y - min.y, max.z - min.z);
-            return { size, center };
-        }
-        computeMinAndMax(min, max, model) {
-            if (!model.geometry.boundingBox)
-                model.geometry.computeBoundingBox();
-            min.x = Math.min(min.x, model.geometry.boundingBox.min.x);
-            min.y = Math.min(min.y, model.geometry.boundingBox.min.y);
-            min.z = Math.min(min.z, model.geometry.boundingBox.min.z);
-            max.x = Math.max(max.x, model.geometry.boundingBox.max.x);
-            max.y = Math.max(max.y, model.geometry.boundingBox.max.y);
-            max.z = Math.max(max.z, model.geometry.boundingBox.max.z);
-        }
-        async getEdges2DPoints() {
-            const src = this.cv.imread(this.htmlImage);
-            // https://docs.opencv.org/3.4/dc/dcf/tutorial_js_contour_features.html
-            this.cv.cvtColor(src, src, this.cv.COLOR_RGBA2GRAY, 0);
-            // this.cv.threshold(src, src, 100, 200, this.cv.THRESH_BINARY);
-            this.cv.bitwise_not(src, src);
-            const contours = new this.cv.MatVector();
-            const hierarchy = new this.cv.Mat();
-            const poly = new this.cv.MatVector();
-            this.cv.findContours(src, contours, hierarchy, this.cv.RETR_CCOMP, this.cv.CHAIN_APPROX_SIMPLE);
-            // Approximates each contour to polygon
-            for (let i = 0; i < contours.size(); ++i) {
-                const tmp = new this.cv.Mat();
-                const cnt = contours.get(i);
-                // We can try more different parameters
-                this.cv.approxPolyDP(cnt, tmp, 1, true);
-                poly.push_back(tmp);
-                cnt.delete();
-                tmp.delete();
+            return edges;
+        };
+    })();
+    // outputs the overlapping segment of a coplanar line and triangle
+    const getOverlappingLine = (function () {
+        const _dir0 = new Vector3();
+        const _dir1 = new Vector3();
+        const _tempDir = new Vector3();
+        const _orthoPlane = new Plane();
+        const _line0 = new Line3();
+        const _line1 = new Line3();
+        const _tempLine = new Line3();
+        return function getOverlappingLine(line, triangle, lineTarget = new Line3()) {
+            if (triangle.needsUpdate) {
+                triangle.needsUpdate();
             }
-            // Get all polygons
-            const bucket = this.buckets[this.currentBucketIndex];
-            const size = poly.size();
-            for (let i = 0; i < size; i++) {
-                const polygon = Array.from(poly.get(i).data32S);
-                // Add offset and convert from pixel to real units
-                for (let j = 0; j < polygon.length; j++) {
-                    if (j === 0 || j % 2 === 0) {
-                        // x axis
-                        // Translate pixels to real units
-                        polygon[j] = (polygon[j] * this.dims.real.x) / this.dims.pixels.x;
-                        polygon[j] = this.bucketsOffset.x + polygon[j] + this.dims.real.x * bucket.row;
+            // if the triangle is degenerate then return no overlap
+            if (triangle.getArea() <= EPSILON) {
+                return null;
+            }
+            const { points, plane } = triangle;
+            _line0.copy(line);
+            _line0.delta(_dir0);
+            // if the line and triangle are not coplanar then return no overlap
+            const areCoplanar = plane.normal.dot(_dir0) === 0.0;
+            if (!areCoplanar) {
+                return null;
+            }
+            // a plane that's orthogonal to the triangle that the line lies on
+            _dir0.cross(plane.normal).normalize();
+            _orthoPlane.setFromNormalAndCoplanarPoint(_dir0, _line0.start);
+            // find the line of intersection of the triangle along the plane if it exists
+            let intersectCount = 0;
+            for (let i = 0; i < 3; i++) {
+                const p1 = points[i];
+                const p2 = points[(i + 1) % 3];
+                _tempLine.start.copy(p1);
+                _tempLine.end.copy(p2);
+                if (_orthoPlane.distanceToPoint(_tempLine.end) === 0 &&
+                    _orthoPlane.distanceToPoint(_tempLine.start) === 0) {
+                    // if the edge lies on the plane then take the line
+                    _line1.copy(_tempLine);
+                    intersectCount = 2;
+                    break;
+                }
+                else if (_orthoPlane.intersectLine(_tempLine, intersectCount === 0 ? _line1.start : _line1.end)) {
+                    let p;
+                    if (intersectCount === 0) {
+                        p = _line1.start;
                     }
                     else {
-                        // z axis
-                        // Translate pixels to real units
-                        polygon[j] = (polygon[j] * this.dims.real.y) / this.dims.pixels.y;
-                        const flippedCoord = -(polygon[j] - this.dims.real.y);
-                        polygon[j] = -this.bucketsOffset.z + flippedCoord + this.dims.real.y * bucket.column;
+                        p = _line1.end;
+                    }
+                    if (p.distanceTo(p2) === 0.0) {
+                        continue;
+                    }
+                    intersectCount++;
+                    if (intersectCount === 2) {
+                        break;
                     }
                 }
-                this.polygons.push(polygon);
             }
-            this.currentBucketIndex++;
-            if (this.currentBucketIndex < this.buckets.length) {
-                await this.renderBucket();
+            if (intersectCount === 2) {
+                // find the intersect line if any
+                _line0.delta(_dir0).normalize();
+                _line1.delta(_dir1).normalize();
+                // swap edges so they're facing in the same direction
+                if (_dir0.dot(_dir1) < 0) {
+                    const tmp = _line1.start;
+                    _line1.start = _line1.end;
+                    _line1.end = tmp;
+                }
+                // check if the edges are overlapping
+                const s1 = _line0.start.dot(_dir0);
+                const e1 = _line0.end.dot(_dir0);
+                const s2 = _line1.start.dot(_dir0);
+                const e2 = _line1.end.dot(_dir0);
+                const separated1 = e1 < s2;
+                const separated2 = s1 < e2;
+                if (s1 !== e2 && s2 !== e1 && separated1 === separated2) {
+                    return null;
+                }
+                // assign the target output
+                _tempDir.subVectors(_line0.start, _line1.start);
+                if (_tempDir.dot(_dir0) > 0) {
+                    lineTarget.start.copy(_line0.start);
+                }
+                else {
+                    lineTarget.start.copy(_line1.start);
+                }
+                _tempDir.subVectors(_line0.end, _line1.end);
+                if (_tempDir.dot(_dir0) < 0) {
+                    lineTarget.end.copy(_line0.end);
+                }
+                else {
+                    lineTarget.end.copy(_line1.end);
+                }
+                return lineTarget;
             }
-            else {
-                this.toggleVisibility(true);
-                await this.controls.reset(false);
-                this.controls.camera = this.context.getCamera();
-                if (this.onVectorizationFinished)
-                    await this.onVectorizationFinished();
+            return null;
+        };
+    })();
+    // returns the the y value on the plane at the given point x, z
+    const getPlaneYAtPoint = (function () {
+        const testLine = new Line3();
+        return function getPlaneYAtPoint(plane, point, target = null) {
+            testLine.start.copy(point);
+            testLine.end.copy(point);
+            testLine.start.y += 1e5;
+            testLine.end.y -= 1e5;
+            plane.intersectLine(testLine, target);
+        };
+    })();
+    // returns whether the given line is above the given triangle plane
+    const isLineAbovePlane = (function () {
+        const _v0 = new Vector3();
+        const _v1 = new Vector3();
+        return function isLineAbovePlane(plane, line) {
+            _v0.lerpVectors(line.start, line.end, 0.5);
+            getPlaneYAtPoint(plane, _v0, _v1);
+            return _v1.y < _v0.y;
+        };
+    })();
+    const isYProjectedLineDegenerate = (function () {
+        const _tempDir = new Vector3();
+        const _upVector = new Vector3(0, 1, 0);
+        return function isYProjectedLineDegenerate(line) {
+            line.delta(_tempDir).normalize();
+            return Math.abs(_tempDir.dot(_upVector)) >= 1.0 - EPSILON;
+        };
+    })();
+    // checks whether the y-projected triangle will be degerate
+    function isYProjectedTriangleDegenerate(tri) {
+        if (tri.needsUpdate) {
+            tri.update();
+        }
+        return Math.abs(tri.plane.normal.dot(_upVector)) <= EPSILON;
+    }
+    // Is the provided line exactly an edge on the triangle
+    function isLineTriangleEdge(tri, line) {
+        // if this is the same line as on the triangle
+        const triPoints = tri.points;
+        let matches = 0;
+        for (let i = 0; i < 3; i++) {
+            const { start, end } = line;
+            const tp = triPoints[i];
+            if (start.distanceToSquared(tp) <= EPSILON) {
+                matches++;
             }
+            if (end.distanceToSquared(tp) <= EPSILON) {
+                matches++;
+            }
+        }
+        return matches >= 2;
+    }
+    // Extracts the normalized [0, 1] distances along the given line that overlaps with the provided triangle when
+    // projected along the y axis
+    const getProjectedOverlaps = (function () {
+        const _target = new Line3();
+        const _tempDir = new Vector3();
+        const _tempVec0 = new Vector3();
+        const _tempVec1 = new Vector3();
+        const _line = new Line3();
+        const _tri = new ExtendedTriangle();
+        return function getProjectedOverlaps(tri, line, overlapsTarget) {
+            _line.copy(line);
+            _tri.copy(tri);
+            // flatten them to a common plane
+            _line.start.y = 0;
+            _line.end.y = 0;
+            _tri.a.y = 0;
+            _tri.b.y = 0;
+            _tri.c.y = 0;
+            _tri.needsUpdate = true;
+            _tri.update();
+            // if the line is meaningfully long and the we have an overlapping line then extract the
+            // distances along the original line to return
+            if (getOverlappingLine(_line, _tri, _target)) {
+                _line.delta(_tempDir);
+                _tempVec0.subVectors(_target.start, _line.start);
+                _tempVec1.subVectors(_target.end, _line.start);
+                let d0 = _tempVec0.length() / _tempDir.length();
+                let d1 = _tempVec1.length() / _tempDir.length();
+                d0 = Math.min(Math.max(d0, 0), 1);
+                d1 = Math.min(Math.max(d1, 0), 1);
+                if (!(Math.abs(d0 - d1) <= EPSILON)) {
+                    overlapsTarget.push(new Float32Array([d0, d1]));
+                }
+                return true;
+            }
+            return false;
+        };
+    })();
+    // Trim the provided line to just the section below the given triangle plane
+    const trimToBeneathTriPlane = (function () {
+        const _lineDirection = new Vector3();
+        const _planeHit = new Vector3();
+        const _centerPoint = new Vector3();
+        const _planePoint = new Vector3();
+        return function trimToBeneathTriPlane(tri, line, lineTarget) {
+            if (tri.needsUpdate) {
+                tri.update();
+            }
+            lineTarget.copy(line);
+            // handle vertical triangles
+            const { plane } = tri;
+            if (isYProjectedTriangleDegenerate(tri)) {
+                return false;
+            }
+            // if the line and plane are coplanar then return that we can't trim
+            line.delta(_lineDirection);
+            const areCoplanar = plane.normal.dot(_lineDirection) === 0.0;
+            if (areCoplanar) {
+                return false;
+            }
+            // if the line does intersect the plane then trim
+            const doesLineIntersect = plane.intersectLine(line, _planeHit);
+            if (doesLineIntersect) {
+                const { start, end } = lineTarget;
+                // test the line side with the largest segment extending beyond the plane
+                let testPoint;
+                let flipped = false;
+                if (start.distanceTo(_planeHit) > end.distanceTo(_planeHit)) {
+                    testPoint = start;
+                }
+                else {
+                    testPoint = end;
+                    flipped = true;
+                }
+                // get the center point of the line segment and the plane hit
+                _centerPoint.lerpVectors(testPoint, _planeHit, 0.5);
+                getPlaneYAtPoint(tri.plane, _centerPoint, _planePoint);
+                // adjust the appropriate line point align with the plane hit point
+                if (_planePoint.y < _centerPoint.y) {
+                    if (flipped)
+                        end.copy(_planeHit);
+                    else
+                        start.copy(_planeHit);
+                }
+                else if (flipped)
+                    start.copy(_planeHit);
+                else
+                    end.copy(_planeHit);
+                return true;
+            }
+            return false;
+        };
+    })();
+    // Converts the given array of overlaps into line segments
+    const overlapsToLines = (function () {
+        const newLine = new Line3();
+        return function overlapsToLines(line, overlaps, target = []) {
+            compressEdgeOverlaps(overlaps);
+            const invOverlaps = [[0, 1]];
+            for (let i = 0, l = overlaps.length; i < l; i++) {
+                const invOverlap = invOverlaps[i];
+                const overlap = overlaps[i];
+                invOverlap[1] = overlap[0];
+                invOverlaps.push(new Float32Array([overlap[1], 1]));
+            }
+            for (let i = 0, l = invOverlaps.length; i < l; i++) {
+                const { start, end } = line;
+                newLine.start.lerpVectors(start, end, invOverlaps[i][0]);
+                newLine.end.lerpVectors(start, end, invOverlaps[i][1]);
+                target.push(
+                // @ts-ignore
+                new Float32Array([
+                    newLine.start.x,
+                    newLine.start.y,
+                    newLine.start.z,
+                    newLine.end.x,
+                    newLine.end.y,
+                    newLine.end.z
+                ]));
+            }
+            return target;
+        };
+    })();
+    // converts the given list of edges to a line segments geometry
+    function edgesToGeometry(edges, y = null) {
+        const edgeArray = new Float32Array(edges.length * 6);
+        let c = 0;
+        for (let i = 0, l = edges.length; i < l; i++) {
+            const line = edges[i];
+            edgeArray[c++] = line[0];
+            edgeArray[c++] = y === null ? line[1] : y;
+            edgeArray[c++] = line[2];
+            edgeArray[c++] = line[3];
+            edgeArray[c++] = y === null ? line[4] : y;
+            edgeArray[c++] = line[5];
+        }
+        const edgeGeom = new BufferGeometry();
+        const edgeBuffer = new BufferAttribute(edgeArray, 3, true);
+        edgeGeom.setAttribute('position', edgeBuffer);
+        return edgeGeom;
+    }
+    // compresses the given edge overlaps into a minimal set of representative objects
+    function compressEdgeOverlaps(overlaps) {
+        overlaps.sort((a, b) => {
+            return a[0] - b[0];
+        });
+        for (let i = 1; i < overlaps.length; i++) {
+            const overlap = overlaps[i];
+            const prevOverlap = overlaps[i - 1];
+            if (overlap[0] <= prevOverlap[1]) {
+                prevOverlap[1] = Math.max(prevOverlap[1], overlap[1]);
+                overlaps.splice(i, 1);
+                i--;
+            }
+        }
+    }
+
+    // Source: https://github.com/gkjohnson/three-mesh-bvh/blob/master/example/edgeProjection.js
+    class EdgeProjector {
+        constructor(context) {
+            this.context = context;
+            this.params = {
+                displayModel: 'color',
+                displayEdges: false,
+                displayProjection: true,
+                useBVH: true,
+                sortEdges: true,
+                amount: 50,
+                color: 0x030303
+            };
+            this.projectedEdges = [];
+        }
+        dispose() {
+            this.projectedEdges.forEach((edge) => {
+                edge.geometry.dispose();
+                if (Array.isArray(edge.material))
+                    edge.material.forEach((mat) => mat.dispose());
+                else
+                    edge.material.dispose();
+            });
+            this.projectedEdges = [];
+        }
+        async projectEdges(model) {
+            const scene = this.context.getScene();
+            // create projection display mesh
+            const projection = new LineSegments(new BufferGeometry(), new LineBasicMaterial({ color: this.params.color }));
+            let task = this.updateEdges(scene, this.params, model, projection);
+            while (task) {
+                const res = task.next();
+                if (res.done) {
+                    task = null;
+                }
+            }
+            this.projectedEdges.push(projection);
+            return projection;
+        }
+        *updateEdges(scene, params, model, projection) {
+            scene.remove(projection);
+            // transform and merge geometries to project into a single model
+            const geometries = [];
+            model.updateWorldMatrix(true, true);
+            const clone = model.geometry.clone();
+            clone.applyMatrix4(model.matrixWorld);
+            for (const key in clone.attributes) {
+                if (key !== 'position') {
+                    clone.deleteAttribute(key);
+                }
+            }
+            geometries.push(clone);
+            const mergedGeometry = mergeBufferGeometries(geometries, false);
+            geometries.length = 0;
+            clone.dispose();
+            yield;
+            // generate the bvh for acceleration
+            const bvh = new MeshBVH(mergedGeometry);
+            yield;
+            // generate the candidate edges
+            const edges = generateEdges(mergedGeometry, new Vector3(0, 1, 0), 50);
+            if (params.sortEdges) {
+                edges.sort((a, b) => {
+                    return Math.min(a.start.y, a.end.y) - Math.min(b.start.y, b.end.y);
+                });
+            }
+            yield;
+            scene.add(projection);
+            // trim the candidate edges
+            const finalEdges = [];
+            const tempLine = new Line3();
+            const tempRay = new Ray();
+            const tempVec = new Vector3();
+            for (let i = 0, l = edges.length; i < l; i++) {
+                const line = edges[i];
+                if (isYProjectedLineDegenerate(line)) {
+                    continue;
+                }
+                const lowestLineY = Math.min(line.start.y, line.end.y);
+                const overlaps = [];
+                bvh.shapecast({
+                    intersectsBounds: (box) => {
+                        if (!params.useBVH) {
+                            return true;
+                        }
+                        // check if the box bounds are above the lowest line point
+                        box.min.y = Math.min(lowestLineY, box.min.y);
+                        tempRay.origin.copy(line.start);
+                        line.delta(tempRay.direction).normalize();
+                        if (box.containsPoint(tempRay.origin)) {
+                            return true;
+                        }
+                        if (tempRay.intersectBox(box, tempVec)) {
+                            return tempRay.origin.distanceToSquared(tempVec) < line.distanceSq();
+                        }
+                        return false;
+                    },
+                    intersectsTriangle: (tri) => {
+                        // skip the triangle if it is completely below the line
+                        const highestTriangleY = Math.max(tri.a.y, tri.b.y, tri.c.y);
+                        if (highestTriangleY < lowestLineY) {
+                            return false;
+                        }
+                        // if the projected triangle is just a line then don't check it
+                        if (isYProjectedTriangleDegenerate(tri)) {
+                            return false;
+                        }
+                        // if this line lies on a triangle edge then don't check it
+                        if (isLineTriangleEdge(tri, line)) {
+                            return false;
+                        }
+                        trimToBeneathTriPlane(tri, line, tempLine);
+                        if (isLineAbovePlane(tri.plane, tempLine)) {
+                            return false;
+                        }
+                        if (tempLine.distance() < 1e-10) {
+                            return false;
+                        }
+                        // compress the edge overlaps so we can easily tell if the whole edge is hidden already
+                        // and exit early
+                        if (getProjectedOverlaps(tri, line, overlaps)) {
+                            compressEdgeOverlaps(overlaps);
+                        }
+                        // if we're hiding the edge entirely now then skip further checks
+                        if (overlaps.length !== 0) {
+                            const [d0, d1] = overlaps[overlaps.length - 1];
+                            return d0 === 0.0 && d1 === 1.0;
+                        }
+                        return false;
+                    }
+                });
+                overlapsToLines(line, overlaps, finalEdges);
+            }
+            projection.geometry.dispose();
+            projection.geometry = edgesToGeometry(finalEdges, 0);
         }
     }
 
@@ -115888,21 +120167,20 @@
         }
     }
 
+    var SelectionWindowMode;
+    (function (SelectionWindowMode) {
+        SelectionWindowMode[SelectionWindowMode["lasso"] = 0] = "lasso";
+        SelectionWindowMode[SelectionWindowMode["box"] = 1] = "box";
+    })(SelectionWindowMode || (SelectionWindowMode = {}));
     class SelectionWindow {
         constructor(context) {
             this.context = context;
-            this.toolMode = 'lasso';
-            this.liveUpdate = false;
-            this.wireframe = false;
-            this.displayHelper = false;
-            this.helperDepth = 10;
-            this.rotate = true;
+            this.toolMode = SelectionWindowMode.box;
             this.selectionShape = new Line();
-            this.selectionPoints = [];
             this.dragging = false;
+            this.selectionPoints = [];
             this.selectionShapeNeedsUpdate = false;
             this.selectionNeedsUpdate = false;
-            // handle building lasso shape
             this.startX = -Infinity;
             this.startY = -Infinity;
             this.prevX = -Infinity;
@@ -115927,14 +120205,17 @@
             this.selectionShape.frustumCulled = false;
             this.context.getCamera().add(this.selectionShape);
         }
-        onDragStarted(event) {
-            this.prevX = event.clientX;
-            this.prevY = event.clientY;
-            this.startX = (event.clientX / window.innerWidth) * 2 - 1;
-            this.startY = -((event.clientY / window.innerHeight) * 2 - 1);
+        onDragStarted() {
+            this.prevX = this.context.mouse.rawPosition.x;
+            this.prevY = this.context.mouse.rawPosition.y;
+            this.startX = this.context.mouse.position.x;
+            this.startY = this.context.mouse.position.y;
             this.selectionPoints.length = 0;
             this.dragging = true;
             const camera = this.context.getCamera();
+            if (!camera.parent) {
+                this.context.getScene().add(camera);
+            }
             if (camera instanceof PerspectiveCamera) {
                 const tan = Math.tan((MathUtils.DEG2RAD * camera.fov) / 2);
                 const yScale = tan * this.selectionShape.position.z;
@@ -115942,24 +120223,21 @@
             }
         }
         onDragFinished() {
-            this.selectionShape.visible = false;
             this.dragging = false;
+            this.selectionShape.visible = false;
             if (this.selectionPoints.length) {
                 this.selectionNeedsUpdate = true;
             }
             this.updateAll();
         }
-        onDrag(event) {
-            // If the left mouse button is not pressed
-            // eslint-disable-next-line no-bitwise
-            if ((1 & event.buttons) === 0) {
+        onDrag() {
+            if (!this.dragging)
                 return;
-            }
-            const ex = event.clientX;
-            const ey = event.clientY;
-            const nx = (event.clientX / window.innerWidth) * 2 - 1;
-            const ny = -((event.clientY / window.innerHeight) * 2 - 1);
-            if (this.toolMode === 'box') {
+            const ex = this.context.mouse.rawPosition.x;
+            const ey = this.context.mouse.rawPosition.y;
+            const nx = this.context.mouse.position.x;
+            const ny = this.context.mouse.position.y;
+            if (this.toolMode === SelectionWindowMode.box) {
                 // set points for the corner of the box
                 this.selectionPoints.length = 3 * 5;
                 this.selectionPoints[0] = this.startX;
@@ -115983,9 +120261,6 @@
                 this.prevX = ex;
                 this.prevY = ey;
                 this.selectionShape.visible = true;
-                if (this.liveUpdate) {
-                    this.selectionNeedsUpdate = true;
-                }
             }
             else {
                 // If the mouse hasn't moved a lot since the last point
@@ -116019,16 +120294,13 @@
                     this.selectionShape.visible = true;
                     this.prevX = ex;
                     this.prevY = ey;
-                    if (this.liveUpdate) {
-                        this.selectionNeedsUpdate = true;
-                    }
                 }
             }
             this.updateSelectionLasso();
         }
         updateSelectionLasso() {
             if (this.selectionShapeNeedsUpdate) {
-                if (this.toolMode === 'lasso') {
+                if (this.toolMode === SelectionWindowMode.lasso) {
                     const ogLength = this.selectionPoints.length;
                     this.selectionPoints.push(this.selectionPoints[0], this.selectionPoints[1], this.selectionPoints[2]);
                     this.selectionShape.geometry.setAttribute('position', new Float32BufferAttribute(this.selectionPoints, 3, false));
@@ -116140,7 +120412,7 @@
             this.dimensions = new IfcDimensions(this.context);
             this.edges = new Edges(this.context);
             this.shadowDropper = new ShadowDropper(this.context, this.IFC);
-            this.edgesVectorizer = new EdgesVectorizer(this.context, this.clipper, this.grid, this.axes);
+            this.edgesProjector = new EdgeProjector(this.context);
             this.dxf = new DXFWriter();
             this.pdf = new PDFWriter();
             this.GLTF = new GLTFManager(this.context, this.IFC);
@@ -116277,8 +120549,8 @@
             this.dxf = null;
             this.pdf.dispose();
             this.pdf = null;
-            this.edgesVectorizer.dispose();
-            this.edgesVectorizer = null;
+            this.edgesProjector.dispose();
+            this.edgesProjector = null;
             this.dropbox = null;
             this.GLTF.dispose();
             this.GLTF = null;
@@ -116476,7 +120748,7 @@
     const viewer = new IfcViewerAPI({ container, backgroundColor: new Color(255, 255, 255) });
     viewer.axes.setAxes();
     viewer.grid.setGrid();
-    viewer.shadowDropper.darkness = 1.5;
+    // viewer.shadowDropper.darkness = 1.5;
 
     // Set up stats
     const stats = new Stats();
@@ -116494,17 +120766,17 @@
       COORDINATE_TO_ORIGIN: true
     });
 
+    viewer.context.renderer.postProduction.active = true;
 
     // Setup loader
 
-    const lineMaterial = new LineBasicMaterial({ color: 0x555555 });
-    const baseMaterial = new MeshBasicMaterial({ color: 0xffffff, side: 2 });
+    // const lineMaterial = new LineBasicMaterial({ color: 0x555555 });
+    // const baseMaterial = new MeshBasicMaterial({ color: 0xffffff, side: 2 });
 
     let first = true;
     let model;
 
     const loadIfc = async (event) => {
-
 
       // tests with glTF
       // const file = event.target.files[0];
@@ -116543,7 +120815,7 @@
       });
 
       model = await viewer.IFC.loadIfc(event.target.files[0], false);
-      model.material.forEach(mat => mat.side = 2);
+      // model.material.forEach(mat => mat.side = 2);
 
       if(first) first = false;
       else {
@@ -116551,7 +120823,7 @@
       }
 
       // await createFill(model.modelID);
-      viewer.edges.create(`${model.modelID}`, model.modelID, lineMaterial, baseMaterial);
+      // viewer.edges.create(`${model.modelID}`, model.modelID, lineMaterial, baseMaterial);
 
       await viewer.shadowDropper.renderShadow(model.modelID);
 
@@ -116570,7 +120842,7 @@
         viewer.dimensions.delete();
       }
       if (event.code === 'Escape') {
-        viewer.IFC.selector.unpickIfcItems();
+        viewer.IFC.selector.unHighlightIfcItems();
       }
     };
 
@@ -116581,7 +120853,7 @@
       if (viewer.clipper.active) {
         viewer.clipper.createPlane();
       } else {
-        const result = await viewer.IFC.selector.pickIfcItem(true);
+        const result = await viewer.IFC.selector.highlightIfcItem(true);
         if (!result) return;
         const { modelID, id } = result;
         const props = await viewer.IFC.getProperties(modelID, id, true, false);

@@ -40,6 +40,7 @@ export class IfcClipper extends IfcComponent {
       }
     });
     this.updateMaterials();
+    this.context.renderer.postProduction.visible = true;
   }
 
   get edgesActive() {
@@ -102,6 +103,7 @@ export class IfcClipper extends IfcComponent {
     this.planes.splice(index, 1);
     this.context.removeClippingPlane(existingPlane.plane);
     this.updateMaterials();
+    this.context.renderer.postProduction.update();
   };
 
   deleteAllPlanes = () => {
@@ -167,10 +169,12 @@ export class IfcClipper extends IfcComponent {
 
   private activateDragging = () => {
     this.dragging = true;
+    this.context.renderer.postProduction.visible = false;
   };
 
   private deactivateDragging = () => {
     this.dragging = false;
+    this.context.renderer.postProduction.visible = true;
   };
 
   private updateMaterials = () => {
