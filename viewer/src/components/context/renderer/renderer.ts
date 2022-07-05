@@ -1,4 +1,4 @@
-import { Box3, Camera, Vector2, WebGLRenderer } from 'three';
+import {  Camera, Vector2, WebGLRenderer } from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { IfcComponent } from '../../../base-types';
 import { Postproduction } from './postproduction';

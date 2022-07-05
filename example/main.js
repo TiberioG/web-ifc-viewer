@@ -79,16 +79,16 @@ const loadIfc = async (event) => {
   overlay.classList.remove('hidden');
   progressText.innerText = `Loading`;
 
-  viewer.IFC.loader.ifcManager.setOnProgress((event) => {
+  viewer.IFC.loader.ifcManager.setOnProgress(async (event) => {
     const percentage = Math.floor((event.loaded * 100) / event.total);
     progressText.innerText = `Loaded ${percentage}%`;
 
-    if(percentage === 100){
+    if (percentage === 100) {
 
       const loadcomplete = document.createElement('div');
       loadcomplete.setAttribute("id", "loadedcomplete");
-
       document.body.appendChild(loadcomplete);
+      await viewer.context.getIfcCamera().currentNavMode.fitModelToFrame()
 
     }
   });
@@ -99,7 +99,7 @@ const loadIfc = async (event) => {
   });
 
   model = await viewer.IFC.loadIfc(event.target.files[0], false);
-  model.material.forEach((mat) => (mat.side = 2));
+  model?.material.forEach((mat) => (mat.side = 2));
 
   if (first) first = false;
   else {
@@ -112,6 +112,7 @@ const loadIfc = async (event) => {
   await viewer.shadowDropper.renderShadow(model.modelID);
 
   overlay.classList.add('hidden');
+  await viewer.context.getIfcCamera().currentNavMode.fitModelToFrame()
 };
 
 const inputElement = document.createElement('input');
@@ -225,6 +226,8 @@ mode2dButton.addEventListener('click', async () => {
 
 const screenshotButton = createSideMenuButton('./resources/png-icon.png');
 screenshotButton.addEventListener('click', async () => {
+  await viewer.context.getIfcCamera().currentNavMode.fitModelToFrame()
+
   const imgData = await viewer.context.renderer.newScreenshot(undefined, new Vector2(500, 500));
   const link = document.createElement('a');
   document.body.appendChild(link);
@@ -232,7 +235,7 @@ screenshotButton.addEventListener('click', async () => {
   link.setAttribute('download', 'screenshot.png');
   link.setAttribute('href', imgData.replace('image/png', 'image/octet-stream'));
   link.click();
-  link.remove();
+
 });
 
 const pdfExportButton = createSideMenuButton('./resources/pdf-icon.png');
