@@ -69,6 +69,21 @@ export class PDFWriter {
     }
   }
 
+  drawByPoly(id: string, coordinates: ArrayLike<number>, box: Box3) {
+    const document = this.getDocument(id);
+    const scale = this.getScale(box, 210, 297);
+    const offsetX = Math.abs(box.min.x) + 1;
+    const offsetY = Math.abs(box.min.z) + 1;
+
+    for (let i = 0; i < coordinates.length - 5; i += 6) {
+      const start = [(coordinates[i] + offsetX) * scale, (coordinates[i + 2] + offsetY) * scale];
+      const end = [(coordinates[i + 3] + offsetX) * scale, (coordinates[i + 5] + offsetY) * scale];
+      // eslint-disable-next-line no-continue
+      if (start[0] === 0 && start[1] === 0 && end[0] === 0 && end[1] === 0) continue;
+      document.drawing.line(start[0], start[1], end[0], end[1], 'S');
+    }
+  }
+
   addLabels(id: string, ifcDimensions: IfcDimensions, box: Box3) {
     const document = this.getDocument(id);
     const scale = this.getScale(box, 210, 297);

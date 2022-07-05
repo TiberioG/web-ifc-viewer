@@ -1,4 +1,4 @@
-import { Camera, Vector2, WebGLRenderer } from 'three';
+import { Box3, Camera, Vector2, WebGLRenderer } from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { IfcComponent } from '../../../base-types';
 import { Postproduction } from './postproduction';
@@ -61,7 +61,7 @@ export class IfcRenderer extends IfcComponent {
     this.renderer2D.setSize(width, height);
   }
 
-  newScreenshot(camera?: Camera, dimensions?: Vector2) {
+  async newScreenshot(camera?: Camera, dimensions?: Vector2) {
     const previousDimensions = this.getSize();
 
     const domElement = this.renderer.domElement;
