@@ -82,6 +82,15 @@ const loadIfc = async (event) => {
   viewer.IFC.loader.ifcManager.setOnProgress((event) => {
     const percentage = Math.floor((event.loaded * 100) / event.total);
     progressText.innerText = `Loaded ${percentage}%`;
+
+    if(percentage === 100){
+
+      const loadcomplete = document.createElement('div');
+      g.setAttribute("id", "loadedcomplete");
+
+      document.body.appendChild(loadcomplete);
+
+    }
   });
 
   viewer.IFC.loader.ifcManager.parser.setupOptionalCategories({
