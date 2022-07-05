@@ -86,7 +86,7 @@ const loadIfc = async (event) => {
     if(percentage === 100){
 
       const loadcomplete = document.createElement('div');
-      g.setAttribute("id", "loadedcomplete");
+      loadcomplete.setAttribute("id", "loadedcomplete");
 
       document.body.appendChild(loadcomplete);
 
